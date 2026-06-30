@@ -10,8 +10,17 @@ const variants = {
     transition: { duration: 0.8, ease: [0.22, 1, 0.36, 1] },
   },
 };
+interface RevealProps {
+  children: ReactNode;
+  delay?: number; // El "?" significa que es opcional
+  className?: string;
+}
 
-export default function Reveal({ children, delay = 0, className }) {
+export default function Reveal({
+  children,
+  delay = 0,
+  className,
+}: RevealProps) {
   return (
     <motion.div
       className={className}
