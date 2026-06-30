@@ -150,7 +150,7 @@ export default function SiteHeader() {
             </div>
 
             <nav className="flex flex-col items-center mt-5 flex-1 gap-6">
-              {links.map((l, i) => (
+              {currentLinks.map((l, i) => (
                 <motion.a
                   key={l.href}
                   href={l.href}
