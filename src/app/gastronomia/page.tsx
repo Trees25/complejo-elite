@@ -1,5 +1,5 @@
-import Hero from "../../components/gastronomia/Hero.tsx";
-import Instalaciones from "../../components/gastronomia/Instalaciones.tsx";
+import Hero from "../../components/gastronomia/Hero";
+import Instalaciones from "../../components/gastronomia/Instalaciones";
 export default function Gastronomia() {
   return (
     <main>

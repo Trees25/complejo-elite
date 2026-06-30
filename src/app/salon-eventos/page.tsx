@@ -1,5 +1,5 @@
-import Hero from "../../components/salonEventos/Hero.tsx";
-import Instalaciones from "../../components/salonEventos/Instalaciones.tsx";
+import Hero from "../../components/salonEventos/Hero";
+import Instalaciones from "../../components/salonEventos/Instalaciones";
 export default function ComplejoDeportivooo() {
   return (
     <main>

@@ -1,5 +1,5 @@
-import Hero from "../../components/complejoDeportivo/Hero.tsx";
-import Instalaciones from "../../components/complejoDeportivo/Instalaciones.tsx";
+import Hero from "../../components/complejoDeportivo/Hero";
+import Instalaciones from "../../components/complejoDeportivo/Instalaciones";
 export default function ComplejoDeportivooo() {
   return (
     <main>
