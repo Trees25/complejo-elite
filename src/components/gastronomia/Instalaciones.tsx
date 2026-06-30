@@ -40,7 +40,7 @@ export default function GastronomiaClient() {
       <section className="border-t border-border py-32">
         <div className="container-elite grid gap-16 md:grid-cols-12 items-start">
           <motion.div {...fadeUp} className="md:col-span-4">
-            <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-gold">
+            <span className="text-xl font-bold uppercase tracking-[0.4em] text-gold">
               El espacio
             </span>
             <h2 className="mt-6 font-display text-5xl md:text-6xl leading-[0.9]">
@@ -70,7 +70,7 @@ export default function GastronomiaClient() {
       <section className="border-t border-border bg-card/30 py-28">
         <div className="container-elite">
           <motion.div {...fadeUp} className="mb-14">
-            <p className="text-xs uppercase tracking-[0.4em] text-gold">
+            <p className="text-xl uppercase tracking-[0.4em] text-gold">
               Propuesta
             </p>
             <h2 className="mt-3 font-display text-4xl md:text-5xl">
@@ -105,7 +105,7 @@ export default function GastronomiaClient() {
           <div className="absolute inset-0 bg-gradient-to-r from-background via-background/40 to-transparent" />
           <div className="container-elite absolute inset-0 flex items-center">
             <motion.div {...fadeUp} className="max-w-xl">
-              <p className="text-xs uppercase tracking-[0.4em] text-gold">
+              <p className="text-xl uppercase tracking-[0.4em] text-gold">
                 A la parrilla
               </p>
               <h2 className="mt-4 font-display text-4xl md:text-6xl">
@@ -119,7 +119,7 @@ export default function GastronomiaClient() {
       <section className="border-t border-border py-28">
         <div className="container-elite grid gap-16 md:grid-cols-2">
           <motion.div {...fadeUp}>
-            <p className="text-xs uppercase tracking-[0.4em] text-gold">
+            <p className="text-xl uppercase tracking-[0.4em] text-gold">
               Eventos informales
             </p>
             <h2 className="mt-3 font-display text-4xl md:text-5xl">

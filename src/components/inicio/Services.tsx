@@ -53,7 +53,7 @@ export default function Services() {
           className="mb-20 flex items-end justify-between gap-6"
         >
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-gold">
+            <p className="text-xl font-bold uppercase tracking-[0.4em] text-gold">
               Espacios
             </p>
             <h2 className="mt-4 font-display text-5xl md:text-6xl">

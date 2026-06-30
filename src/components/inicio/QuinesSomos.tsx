@@ -34,7 +34,10 @@ const valores = [
     d: "Convivencia basada en inclusión y valoración de cada persona.",
   },
   { t: "Innovación", d: "Evolucionamos para superar expectativas." },
-  { t: "Integridad", d: "Honestidad, responsabilidad y compromiso." },
+  {
+    t: "Integridad",
+    d: "Actuamos con honestidad, responsabilidad y compromiso en cada decisión que tomamos.",
+  },
 ];
 
 const fadeUp = {
@@ -51,7 +54,7 @@ export default function AboutSection() {
       <section className="border-t border-border py-32">
         <div className="container-elite grid gap-16 md:grid-cols-12 items-start">
           <motion.div {...fadeUp} className="md:col-span-4">
-            <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-gold">
+            <span className="text-xl font-bold uppercase tracking-[0.4em] text-gold">
               Bienvenido
             </span>
             <h2 className="mt-6 font-display text-5xl md:text-6xl leading-[0.9]">
@@ -63,6 +66,52 @@ export default function AboutSection() {
             transition={{ delay: 0.2 }}
             className="md:col-span-7 md:col-start-6 space-y-8"
           >
+            {/*
+            <p className="text-lg leading-relaxed text-muted-foreground">
+              Creamos este predio con un objetivo claro: ofrecer mucho más que
+              un espacio para vivir un momento diferente. Pensamos cada detalle
+              para que quienes nos elijan encuentren un lugar exclusivo, cómodo
+              y distinto, donde puedan disfrutar de una experiencia de verdadero
+              nivel.
+            </p>
+            <p className="text-lg leading-relaxed text-muted-foreground">
+              Buscamos que cada persona encuentre aquí todo lo que necesita para
+              vivir un momento ideal: instalaciones de calidad, servicios
+              pensados para su bienestar, espacios de encuentro y un entorno que
+              inspire a superarse y disfrutar.
+            </p>
+            <p className="text-lg leading-relaxed text-muted-foreground">
+              Creemos que el deporte no es solo actividad física; es compartir,
+              desconectarse de la rutina, generar vínculos y crear momentos
+              inolvidables. Por eso diseñamos un predio donde la excelencia, la
+              comodidad y la experiencia se unen para transformar cada visita en
+              algo único.
+            </p>
+            <p className="text-lg leading-relaxed text-muted-foreground">
+              Porque más que un predio deportivo, queremos ser tu lugar. Un
+              espacio donde el deporte, la pasión, la exclusividad y el disfrute
+              se encuentran.
+            </p>*/}
+            <p className="text-lg leading-relaxed text-muted-foreground">
+              Creamos este predio para ofrecer una experiencia deportiva y
+              social de alto nivel. Diseñamos un entorno exclusivo que combina
+              instalaciones de calidad, servicios enfocados en el bienestar y
+              áreas de encuentro para que cada visitante encuentre exactamente
+              lo que necesita.
+            </p>
+            <p className="text-lg leading-relaxed text-muted-foreground">
+              Entendemos el deporte como un medio para compartir, desconectar de
+              la rutina y generar vínculos. Por eso, combinamos excelencia y
+              comodidad en cada detalle para transformar la actividad física en
+              una experiencia integral.
+            </p>
+            <p className="text-lg leading-relaxed text-muted-foreground">
+              Buscamos ser más que un complejo deportivo: queremos ser tu lugar.
+              Un espacio definitivo donde el deporte, la pasión, la exclusividad
+              y el disfrute se encuentran.
+            </p>
+
+            {/*
             <p className="text-lg leading-relaxed text-muted-foreground">
               Creamos este predio con un objetivo claro: ofrecer mucho más que
               un espacio para vivir un momento diferente. Pensamos cada detalle
@@ -72,17 +121,7 @@ export default function AboutSection() {
               Creemos que el deporte no es solo actividad física; es compartir,
               desconectarse de la rutina, generar vínculos y crear momentos
               inolvidables.
-            </p>
-            {/*<Link
-              href="/nosotros"
-              className="group inline-flex items-center gap-3 text-sm uppercase tracking-[0.3em] text-gold hover:text-white transition-colors"
-            >
-              Nuestra historia{" "}
-              <ArrowRight
-                className="transition-transform group-hover:translate-x-2"
-                size={16}
-              />
-            </Link>*/}
+            </p>*/}
           </motion.div>
         </div>
       </section>
@@ -106,7 +145,7 @@ export default function AboutSection() {
               transition={{ delay: i * 0.2 }}
               className="group relative border border-border/50 p-12 hover:border-gold/80 transition-colors"
             >
-              <span className="text-[10px] uppercase tracking-[0.4em] text-gold">
+              <span className="text-xl uppercase tracking-[0.4em] text-gold">
                 {item.t}
               </span>
               <p className="mt-8 font-display text-3xl leading-snug">
@@ -121,7 +160,7 @@ export default function AboutSection() {
       <section className="border-t border-border bg-card/50 py-32">
         <div className="container-elite">
           <motion.div {...fadeUp} className="mb-20">
-            <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-gold">
+            <span className="text-xl font-bold uppercase tracking-[0.4em] text-gold">
               Valores
             </span>
             <h2 className="mt-4 font-display text-5xl">Lo que nos define.</h2>
@@ -152,7 +191,7 @@ export default function AboutSection() {
         <div className="container-elite max-w-4xl text-center">
           <motion.span
             {...fadeUp}
-            className="text-[10px] font-bold uppercase tracking-[0.4em] text-gold"
+            className="text-xl font-bold uppercase tracking-[0.4em] text-gold"
           >
             Nuestro propósito
           </motion.span>

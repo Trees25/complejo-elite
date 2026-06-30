@@ -109,7 +109,7 @@ export default function Instalaciones() {
       <section className="border-t border-border  py-32">
         <div className="container-elite">
           <motion.div {...fadeUp} className="mb-20">
-            <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-gold">
+            <span className="text-xl font-bold uppercase tracking-[0.4em] text-gold">
               Instalaciones
             </span>
             <h2 className="mt-4 font-display text-5xl">
@@ -141,7 +141,7 @@ export default function Instalaciones() {
       <section className="border-t border-border bg-card/30 py-28">
         <div className="container-elite">
           <motion.div {...fadeUp} className="mb-14 text-center md:text-left">
-            <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-gold">
+            <span className="text-xl font-bold uppercase tracking-[0.4em] text-gold">
               Galería
             </span>
             <h2 className="mt-4 font-display text-4xl md:text-5xl">
@@ -158,8 +158,8 @@ export default function Instalaciones() {
       <section className="border-t border-border bg-card/50 py-28">
         <div className="container-elite">
           <motion.div {...fadeUp} className="mb-14">
-            <p className="text-xs uppercase tracking-[0.4em] text-gold">
-              Amenities
+            <p className="text-xl uppercase tracking-[0.4em] text-gold">
+              Comodidades
             </p>
             <h2 className="mt-3 font-display text-4xl md:text-5xl">
               Servicios pensados para tu bienestar.
@@ -187,7 +187,7 @@ export default function Instalaciones() {
         <div className="container-elite max-w-3xl text-center">
           <motion.p
             {...fadeUp}
-            className="text-xs uppercase tracking-[0.4em] text-gold"
+            className="text-xl uppercase tracking-[0.4em] text-gold"
           >
             Reservas
           </motion.p>

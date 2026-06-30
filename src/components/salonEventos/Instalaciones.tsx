@@ -57,7 +57,7 @@ export default function Instalaciones() {
       <section className="border-t border-border py-28">
         <div className="container-elite grid gap-16 md:grid-cols-12">
           <motion.div {...fadeUp} className="md:col-span-5">
-            <p className="text-xs uppercase tracking-[0.4em] text-gold">
+            <p className="text-xl uppercase tracking-[0.4em] text-gold">
               Ficha técnica
             </p>
             <h2 className="mt-4 font-display text-4xl md:text-5xl">
@@ -94,7 +94,7 @@ export default function Instalaciones() {
       <section className="border-t border-border bg-card/30 py-28">
         <div className="container-elite">
           <motion.div {...fadeUp} className="mb-14">
-            <p className="text-xs uppercase tracking-[0.4em] text-gold">
+            <p className="text-xl uppercase tracking-[0.4em] text-gold">
               Galería
             </p>
             <h2 className="mt-3 font-display text-4xl md:text-5xl">
@@ -129,7 +129,7 @@ export default function Instalaciones() {
       <section className="border-t border-border py-28">
         <div className="container-elite">
           <motion.div {...fadeUp} className="mb-14">
-            <p className="text-xs uppercase tracking-[0.4em] text-gold">
+            <p className="text-xl uppercase tracking-[0.4em] text-gold">
               Incluye
             </p>
             <h2 className="mt-3 font-display text-4xl md:text-5xl">
@@ -156,7 +156,7 @@ export default function Instalaciones() {
       <section className="border-t border-border bg-card/30 py-28">
         <div className="container-elite grid gap-16 md:grid-cols-2">
           <motion.div {...fadeUp}>
-            <p className="text-xs uppercase tracking-[0.4em] text-gold">
+            <p className="text-xl uppercase tracking-[0.4em] text-gold">
               Equipo de ventas
             </p>
             <h2 className="mt-3 font-display text-4xl md:text-5xl">
