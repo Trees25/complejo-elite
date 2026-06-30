@@ -1,5 +1,5 @@
 "use client";
-import CarouselScale from "./CarouselScale.tsx";
+import CarouselScale from "./CarouselScale";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useState } from "react";
