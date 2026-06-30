@@ -1,7 +1,7 @@
 "use client"; // Declaro que es use client para poder renderizar el framer motion
 
 import { motion } from "framer-motion";
-
+import { ReactNode } from "react";
 const variants = {
   hidden: { opacity: 0, y: 30 },
   visible: {
