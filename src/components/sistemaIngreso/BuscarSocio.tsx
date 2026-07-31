@@ -60,6 +60,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
   });
 
   const [data, setData] = useState({
+    socioId: "",
     socioNombreApellido: "",
     socioDni: "",
     socioBaja: "",
@@ -167,6 +168,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
         socioNombreApellido: socioEncontrado.nombre_completo,
         socioDni: socioEncontrado.dni,
         socioBaja: socioEncontrado.estado ? "Activo" : "Dado de baja",
+        socioId: socioEncontrado.id,
       }));
       setIngresantes([String(socioEncontrado.dni)]);
     } else {
@@ -239,6 +241,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
         vehiculosInvitados: "0",
         observaciones: "",
         formaPago: "efectivo",
+        socioId: "",
       });
       setIngresantes([]);
     } catch (error) {
@@ -246,6 +249,32 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
       alert("No se pudo registrar el ingreso.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEditarSocio = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const estadoSocio = data.socioBaja.includes("Activo") ? true : false;
+    try {
+      const { data: socioEditado, error } = await supabase
+        .from("socios")
+        .update([
+          {
+            dni: data.socioDni,
+            nombre_completo: data.socioNombreApellido.toUpperCase(),
+            estado: estadoSocio, // Activo por defecto
+          },
+        ])
+        .eq("id", data.socioId);
+
+      if (error) throw error;
+
+      alert("Socio editado correctamente.");
+    } catch (error) {
+      console.error("Error al modificar socio:", error);
+      alert("Hubo un error al registrar el socio.");
+    } finally {
+      setGuardandoSocio(false);
     }
   };
 
@@ -462,6 +491,76 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
           </div>
         </div>
       </div>
+      {usuario.includes("admin") && (
+        <>
+          <h2 className="text-xl sm:text-2xl font-bold border-b-2 border-black pb-3">
+            Modificar datos socio seleccionado
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
+            <div className="space-y-4 bg-gray-50 p-4 sm:p-5 rounded-lg border border-gray-200">
+              <h3 className="font-bold text-[#3FA7AC] uppercase tracking-wide">
+                Datos del Socio
+              </h3>
+              <div className="space-y-2">
+                <Label className="font-semibold">Nombre Completo</Label>
+                <Input
+                  name="socioNombreApellido"
+                  value={data.socioNombreApellido || ""}
+                  className="bg-white"
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="font-semibold">Documento N°</Label>
+                <Input
+                  name="socioDni"
+                  value={data.socioDni || ""}
+                  className="bg-white"
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="font-semibold">Estado</Label>
+
+                <Select
+                  value={data.socioBaja || ""}
+                  onValueChange={(val) => handleSelectChange("socioBaja", val)}
+                >
+                  <SelectTrigger
+                    className={
+                      data.socioBaja.includes("Activo")
+                        ? "!bg-green-100 text-green-800 font-bold w-full"
+                        : data.socioBaja.includes("baja")
+                          ? "!bg-red-100 text-red-800 font-bold w-full"
+                          : "font-bold"
+                    }
+                  >
+                    <SelectValue placeholder="Seleccione estado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      <SelectItem value={"Activo"}>Activo</SelectItem>
+                      <SelectItem value={"Dado de baja"}>
+                        Dado de baja
+                      </SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <div className="pt-6 flex flex-col sm:flex-row justify-end gap-4">
+            <Button
+              disabled={loading}
+              size="lg"
+              onClick={handleEditarSocio}
+              className="bg-[#3FA7AC] hover:bg-gray-500 text-white font-bold px-8 py-6 text-lg shadow-lg w-full sm:w-auto"
+            >
+              {loading ? "Registrando precios..." : "Editar precios"}
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   );
 }

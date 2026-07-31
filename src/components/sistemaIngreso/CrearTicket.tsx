@@ -217,26 +217,6 @@ export default function CrearTicket({ usuario }: { usuario: String }) {
         </div>
       </div>
 
-      {/* BLOQUE DATOS PRECIOS 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-        {precios.length > 0 ? (
-          precios.map((ticket) => (
-            <div key={ticket.id} className="space-y-2">
-              <Label className="font-semibold">{ticket.nombre}</Label>
-              <Input
-                name={ticket.nombre}
-                type="number"
-                value={ticket.precio || ""}
-                onChange={(e) => handleChange(ticket.id, e.target.value)}
-                className="bg-white focus-visible:ring-[#3FA7AC]"
-              />
-            </div>
-          ))
-        ) : (
-          <p>Cargando precios...</p>
-        )}
-      </div>*/}
-
       {/* BOTONES DE ACCIÓN */}
       <div className="pt-6 flex flex-col sm:flex-row justify-end gap-4">
         <Button
