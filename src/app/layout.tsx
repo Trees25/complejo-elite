@@ -1,8 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import SiteHeader from "../components/general/SiteHeader";
-import Footer from "../components/general/Footer";
-import WhatsappButton from "../components/general/WhatsappButton";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -28,16 +25,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <body className="bg-black text-foreground antialiased">
-        {/* El Header aparecerá en TODAS las páginas */}
-        <SiteHeader />
-
-        {/* Aquí Next.js inyecta el contenido de la page.tsx en la que estés */}
-        <main className="min-h-screen">{children}</main>
-        <WhatsappButton />
-        {/* El Footer aparecerá en TODAS las páginas */}
-        <Footer />
-      </body>
+      <body className="bg-black text-foreground antialiased">{children}</body>
     </html>
   );
 }
