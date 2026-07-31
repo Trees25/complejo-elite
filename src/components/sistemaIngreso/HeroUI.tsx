@@ -7,8 +7,9 @@ import Image from "next/image";
 import Dashboard from "@/components/sistemaIngreso/Dashboard";
 import BuscarSocio from "@/components/sistemaIngreso/BuscarSocio";
 import CierreCaja from "@/components/sistemaIngreso/CierreCaja";
-//import EditarPrecios from "@/components/sistemaIngreso/EditarPrecios";
+import EditarPrecios from "@/components/sistemaIngreso/EditarPrecios";
 import FormGenerarTickets from "@/components/sistemaIngreso/FormGenerarTickets";
+import CrearTicket from "@/components/sistemaIngreso/CrearTicket";
 
 // Recibimos el rol como parámetro desde el servidor
 export default function HeroUI({ rolInicial }: { rolInicial: string }) {
@@ -95,16 +96,30 @@ export default function HeroUI({ rolInicial }: { rolInicial: string }) {
 
           {/* Bloque Admin Final */}
           {rolInicial.includes("admin") && (
-            <Button
-              className={
-                activeTab === "editar precios"
-                  ? "bg-[#3FA7AC] px-4 py-4 border-white text-white font-bold shadow-md w-full text-base sm:w-auto"
-                  : "bg-white px-4 py-4 text-base text-black border-2 border-gray-300 hover:border-black hover:text-black hover:bg-white hover:shadow-xl w-full sm:w-auto "
-              }
-              onClick={() => setActiveTab("editar precios")}
-            >
-              Editar precios
-            </Button>
+            <>
+              {/*
+              <Button
+                className={
+                  activeTab === "editar precios"
+                    ? "bg-[#3FA7AC] px-4 py-4 border-white text-white font-bold shadow-md w-full text-base sm:w-auto"
+                    : "bg-white px-4 py-4 text-base text-black border-2 border-gray-300 hover:border-black hover:text-black hover:bg-white hover:shadow-xl w-full sm:w-auto "
+                }
+                onClick={() => setActiveTab("editar precios")}
+              >
+                Editar precios
+              </Button>*/}
+
+              <Button
+                className={
+                  activeTab === "crear ticket"
+                    ? "bg-[#3FA7AC] px-4 py-4 border-white text-white font-bold shadow-md w-full text-base sm:w-auto"
+                    : "bg-white px-4 py-4 text-base text-black border-2 border-gray-300 hover:border-black hover:text-black hover:bg-white hover:shadow-xl w-full sm:w-auto "
+                }
+                onClick={() => setActiveTab("crear ticket")}
+              >
+                Crear/Editar tickets
+              </Button>
+            </>
           )}
         </nav>
 
@@ -116,9 +131,10 @@ export default function HeroUI({ rolInicial }: { rolInicial: string }) {
           )}
           {activeTab === "buscar socio" && <BuscarSocio usuario={rolInicial} />}
           {activeTab === "cerrar caja" && <CierreCaja usuario={rolInicial} />}
-          {/*{activeTab === "editar precios" && (
+          {activeTab === "editar precios" && (
             <EditarPrecios usuario={rolInicial} />
-          )}*/}
+          )}
+          {activeTab === "crear ticket" && <CrearTicket usuario={rolInicial} />}
         </main>
       </div>
     </div>

@@ -1,25 +1,28 @@
 "use client";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { createClient } from "@/utils/supabase/client";
 
 interface DetalleItem {
-  nombre?: string;
-  cantidad?: number;
-  recaudacion?: number;
-  [key: string]: any;
+  tipo_ticket: string;
+  cantidad: number;
+  recaudacion: number;
 }
 
 interface CierreData {
+  turno_id: string;
   detalles: DetalleItem[];
-  [key: string]: any;
+  gran_total: number;
 }
-export default function CierreCaja({ usuario }: { usuario: String }) {
+
+export default function CierreCaja({ usuario }: { usuario: string }) {
+  const supabase = createClient();
   const [datosCierre, setDatosCierre] = useState<CierreData | null>(null);
   const [loading, setLoading] = useState(false);
   const [guardando, setGuardando] = useState(false);
 
+  // Validación de permisos
   if (!usuario || !usuario.includes("admin")) {
-    console.log(usuario);
     return (
       <div className="p-8 bg-red-100 text-red-800 border border-red-300 rounded-lg">
         <h2 className="font-bold text-xl">Acceso Denegado</h2>
@@ -30,7 +33,6 @@ export default function CierreCaja({ usuario }: { usuario: String }) {
     );
   }
 
-  // Obtener la fecha actual en formato legible para la interfaz
   const fechaHoy = new Date().toLocaleDateString("es-AR", {
     weekday: "long",
     year: "numeric",
@@ -41,62 +43,104 @@ export default function CierreCaja({ usuario }: { usuario: String }) {
   const consultarCajaHoy = async () => {
     setLoading(true);
     try {
-      // Pedimos los datos al endpoint (por defecto el PHP usa la fecha actual)
-      const response = await fetch(
-        "https://mutualunsj.org.ar/api-cierre-caja.php",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
-        },
+      // 1. Buscar si hay un turno de caja abierto
+      const { data: turno, error: errorTurno } = await supabase
+        .from("turnos_caja")
+        .select("*")
+        .eq("estado", "ABIERTA")
+        .maybeSingle();
+
+      if (errorTurno) throw errorTurno;
+      if (!turno) {
+        alert("No hay ningún turno de caja abierto actualmente.");
+        return;
+      }
+
+      // 2. Obtener todos los tickets vinculados a este turno que NO sean sobrantes
+      const { data: tickets, error: errorTickets } = await supabase
+        .from("tickets")
+        .select(
+          `
+          id,
+          estado,
+          lotes_impresion!inner(turno_caja_id),
+          tipos_ticket(id, nombre, precio)
+        `,
+        )
+        .eq("lotes_impresion.turno_caja_id", turno.id)
+        .neq("estado", "SOBRANTE");
+
+      if (errorTickets) throw errorTickets;
+
+      // 3. Agrupar totales por tipo de ticket
+      const detallesMap = new Map<
+        string,
+        { cantidad: number; recaudacion: number }
+      >();
+      let gran_total = 0;
+
+      (tickets || []).forEach((t: any) => {
+        const nombre = t.tipos_ticket.nombre;
+        const precio = Number(t.tipos_ticket.precio);
+
+        if (!detallesMap.has(nombre)) {
+          detallesMap.set(nombre, { cantidad: 0, recaudacion: 0 });
+        }
+        const actual = detallesMap.get(nombre)!;
+        actual.cantidad += 1;
+        actual.recaudacion += precio;
+        gran_total += precio;
+      });
+
+      // 4. Convertir el mapa a un array para renderizar
+      const detalles = Array.from(detallesMap.entries()).map(
+        ([nombre, valores]) => ({
+          tipo_ticket: nombre,
+          cantidad: valores.cantidad,
+          recaudacion: valores.recaudacion,
+        }),
       );
 
-      const json = await response.json();
-
-      if (json.exito) {
-        setDatosCierre(json);
-      } else {
-        alert("Error al consultar la caja: " + json.error);
-      }
-    } catch (error) {
-      console.error("Error de red:", error);
-      alert("No se pudo conectar con el servidor.");
+      setDatosCierre({
+        turno_id: turno.id,
+        detalles,
+        gran_total,
+      });
+    } catch (error: any) {
+      console.error("Error consultando caja:", error);
+      alert("Error al calcular: " + error.message);
     } finally {
       setLoading(false);
     }
   };
 
   const guardarCierreDefinitivo = async () => {
-    // Aquí confirmamos antes de hacer una acción destructiva/permanente
+    if (!datosCierre) return;
+
     const confirmar = window.confirm(
-      "¿Estás seguro de guardar el cierre? Esta acción no se puede modificar.",
+      "¿Estás seguro de cerrar la caja? El turno pasará a 'CERRADA' y no se podrán emitir más tickets.",
     );
     if (!confirmar) return;
 
     setGuardando(true);
     try {
-      // Este endpoint lo crearemos en el próximo paso
-      const response = await fetch(
-        "https://mutualunsj.org.ar/api-guardar-cierre.php",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(datosCierre),
-        },
-      );
+      // Actualizar el turno a cerrado y asentar el monto
+      const { error } = await supabase
+        .from("turnos_caja")
+        .update({
+          estado: "CERRADA",
+          fecha_cierre: new Date().toISOString(),
+          monto_declarado: datosCierre.gran_total,
+        })
+        .eq("id", datosCierre.turno_id);
 
-      const json = await response.json();
+      if (error) throw error;
 
-      if (json.exito) {
-        alert("¡Cierre de caja guardado exitosamente!");
-        // Limpiamos la pantalla tras guardar
-        setDatosCierre(null);
-      } else {
-        alert("Error al guardar: " + json.error);
-      }
-    } catch (error) {
-      console.error("Error de red:", error);
-      alert("No se pudo conectar con el servidor.");
+      alert("¡Cierre de caja guardado exitosamente!");
+      setDatosCierre(null);
+    } catch (error: any) {
+      console.error("Error al guardar cierre:", error);
+      alert("Error al guardar: " + error.message);
     } finally {
       setGuardando(false);
     }
@@ -123,7 +167,8 @@ export default function CierreCaja({ usuario }: { usuario: String }) {
       {!datosCierre && !loading && (
         <div className="text-center py-12 text-gray-400">
           <p>
-            Presiona "Consultar Totales de Hoy" para ver la recaudación actual.
+            Presiona "Consultar Totales de Hoy" para ver la recaudación del
+            turno abierto.
           </p>
         </div>
       )}
@@ -131,7 +176,7 @@ export default function CierreCaja({ usuario }: { usuario: String }) {
       {datosCierre && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <h3 className="font-bold text-gray-700 uppercase">
-            Detalle por forma de pago
+            Detalle por Tipo de Ticket
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
@@ -141,19 +186,29 @@ export default function CierreCaja({ usuario }: { usuario: String }) {
                 className="bg-gray-50 p-6 rounded-lg border border-gray-200 shadow-sm flex flex-col justify-center"
               >
                 <span className="text-sm font-bold text-gray-500 uppercase">
-                  {item.forma_pago}
+                  {item.tipo_ticket}
                 </span>
-                <span className="text-3xl font-black text-gray-800 mt-1">
-                  ${Number(item.total).toLocaleString("es-AR")}
+                <span className="text-xs text-gray-400 font-semibold mb-1">
+                  Cantidad vendida: {item.cantidad}
+                </span>
+                <span className="text-3xl font-black text-gray-800">
+                  ${Number(item.recaudacion).toLocaleString("es-AR")}
                 </span>
               </div>
             ))}
+
+            {/* Si no hay ventas, mostrar mensaje */}
+            {datosCierre.detalles.length === 0 && (
+              <p className="text-gray-500 text-sm">
+                No se han emitido tickets en este turno.
+              </p>
+            )}
           </div>
 
           <div className="bg-[#eaf5f6] p-6 rounded-lg border border-[#3FA7AC] flex flex-col sm:flex-row justify-between items-center">
             <div>
               <p className="text-sm font-bold text-[#3FA7AC] uppercase">
-                Recaudación Total del Día
+                Recaudación Total del Turno
               </p>
               <p className="text-5xl font-black text-[#3FA7AC] mt-1">
                 ${Number(datosCierre.gran_total).toLocaleString("es-AR")}
@@ -166,7 +221,7 @@ export default function CierreCaja({ usuario }: { usuario: String }) {
               size="lg"
               className="bg-green-600 hover:bg-green-700 text-white font-bold w-full sm:w-auto mt-6 sm:mt-0 shadow-md px-8 py-6 text-lg"
             >
-              {guardando ? "Guardando..." : "Guardar Cierre Definitivo"}
+              {guardando ? "Guardando..." : "Cerrar Turno de Caja"}
             </Button>
           </div>
         </div>

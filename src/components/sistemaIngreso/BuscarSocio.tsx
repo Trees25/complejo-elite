@@ -352,16 +352,18 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
       <div className="space-y-2">
         <div className="flex justify-between items-end">
           <Label className="text-sm pb-1">Elegir Socio</Label>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setModalNuevoSocio(true)}
-            className="flex items-center gap-2 h-8 text-[#3FA7AC] border-[#3FA7AC] hover:bg-[#3FA7AC] hover:text-white"
-          >
-            <UserPlus className="w-3 h-3" />
-            Nuevo Socio
-          </Button>
+          {usuario.includes("admin") && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setModalNuevoSocio(true)}
+              className="flex items-center gap-2 h-8 text-[#3FA7AC] border-[#3FA7AC] hover:bg-[#3FA7AC] hover:text-white"
+            >
+              <UserPlus className="w-3 h-3" />
+              Nuevo Socio
+            </Button>
+          )}
         </div>
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>
@@ -459,20 +461,6 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
             />
           </div>
         </div>
-      </div>
-
-      {/* BOTÓN REGISTRAR INGRESO (Reubicado al final como en versiones previas) */}
-      <div className="pt-4 flex justify-end">
-        <Button
-          disabled={
-            loading || !data.socioDni || data.socioBaja.includes("Dado de baja")
-          }
-          size="lg"
-          onClick={handleRegistrarIngreso}
-          className="bg-[#3FA7AC] hover:bg-[#358f94] text-white font-bold px-8"
-        >
-          {loading ? "Registrando..." : "Registrar Ingreso"}
-        </Button>
       </div>
     </div>
   );
