@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/utils/supabase/client";
+import { toast } from "sonner";
 
 interface UsuarioProps {
   id: string;
@@ -22,6 +23,7 @@ export default function Dashboard({ usuario }: { usuario: String }) {
   const [totalTickets, setTotalTickets] = useState(0);
   const [recaudacionTotal, setRecaudacionTotal] = useState(0);
   const [desglose, setDesglose] = useState<ResumenTicket[]>([]);
+  const [errorFechas, setErrorFechas] = useState(false);
 
   // Fechas por defecto: Desde el primer día del mes actual hasta hoy
   const hoy = new Date().toISOString().split("T")[0];
@@ -51,6 +53,23 @@ export default function Dashboard({ usuario }: { usuario: String }) {
   }
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (
+      e.target.name === "desde" &&
+      filtros.hasta &&
+      e.target.value > filtros.hasta
+    ) {
+      toast.error("ERROR EN LAS FECHAS", {
+        description: "LA FECHA 'DESDE' NO PUEDE SER MAYOR A LA FECHA 'HASTA'",
+      });
+    } else if (
+      e.target.name === "hasta" &&
+      filtros.desde &&
+      e.target.value < filtros.desde
+    ) {
+      toast.error("ERROR EN LAS FECHAS", {
+        description: "LA FECHA 'HASTA' NO PUEDE SER MENOR A LA FECHA 'DESDE'",
+      });
+    }
     setFiltros({ ...filtros, [e.target.name]: e.target.value });
   };
 
@@ -118,7 +137,9 @@ export default function Dashboard({ usuario }: { usuario: String }) {
         setDesglose(arrayDesglose);
       }
     } catch (error) {
-      console.error("Error al cargar métricas del dashboard:", error);
+      toast.error("ERROR AL CARGAR METRICAS", {
+        description: `OCURRIÓ UN ERROR AL CARGAR LAS METRICAS ${error.message}`,
+      });
     } finally {
       setLoading(false);
     }
@@ -130,17 +151,17 @@ export default function Dashboard({ usuario }: { usuario: String }) {
   }, [supabase]);
 
   return (
-    <div className="space-y-6 sm:space-y-8 p-4 sm:p-8 bg-white text-black border border-gray-200 rounded-xl shadow-lg">
-      <h2 className="text-xl sm:text-2xl font-bold border-b-2 border-black pb-3">
+    <div className="space-y-6 sm:space-y-8 p-4 sm:p-8 bg-card text-black border border-gray-200 rounded-xl shadow-lg text-white">
+      <h2 className="text-xl sm:text-2xl font-bold border-b-2 border-gold pb-3 text-white">
         Dashboard General - Control de Accesos
       </h2>
 
       {/* BLOQUE FILTRO POR INTERVALO DE FECHAS */}
-      <div className="space-y-4 bg-gray-50 p-4 sm:p-5 rounded-lg border border-gray-200">
-        <h3 className="font-bold text-[#3FA7AC] uppercase tracking-wide">
+      <div className="space-y-4 bg-card/60 p-4 sm:p-5 rounded-lg border border-gray-200">
+        <h3 className="font-bold text-gold-gradient uppercase tracking-wide">
           Filtrar por Rango de Fechas
         </h3>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end ">
           <div className="space-y-2">
             <Label className="font-semibold">Desde</Label>
             <Input
@@ -148,7 +169,7 @@ export default function Dashboard({ usuario }: { usuario: String }) {
               name="desde"
               value={filtros.desde}
               onChange={handleDateChange}
-              className="bg-white focus-visible:ring-[#3FA7AC]"
+              className="bg-card focus-visible:ring-[#C4A77D]"
             />
           </div>
           <div className="space-y-2">
@@ -158,13 +179,13 @@ export default function Dashboard({ usuario }: { usuario: String }) {
               name="hasta"
               value={filtros.hasta}
               onChange={handleDateChange}
-              className="bg-white focus-visible:ring-[#3FA7AC]"
+              className="bg-card focus-visible:ring-[#C4A77D]"
             />
           </div>
           <Button
             onClick={cargarMetricas}
             disabled={loading}
-            className="bg-[#3FA7AC] hover:bg-[#358f94] text-white font-bold h-10 w-full"
+            className="bg-black hover:bg-gray-800 text-gold font-bold px-8 py-6 text-lg shadow-lg w-full sm:w-auto transition-all"
           >
             {loading ? "Filtrando..." : "Aplicar Filtro"}
           </Button>
@@ -173,18 +194,18 @@ export default function Dashboard({ usuario }: { usuario: String }) {
 
       {/* TARJETAS DE RESUMEN PRINCIPAL */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 shadow-sm flex flex-col justify-between">
-          <h3 className="font-bold text-[#3FA7AC] uppercase tracking-wide text-sm">
+        <div className="bg-card/60 p-6 rounded-lg border border-gray-200 shadow-sm flex flex-col justify-between text-white">
+          <h3 className="font-bold text-gold-gradient uppercase tracking-wide text-sm">
             Total Tickets Emitidos (En el periodo)
           </h3>
-          <p className="text-4xl font-extrabold mt-4 text-black">
+          <p className="text-4xl font-extrabold mt-4 ">
             {loading ? "..." : totalTickets}{" "}
-            <span className="text-sm font-normal text-gray-500">tickets</span>
+            <span className="text-sm font-normal text-gray-300">tickets</span>
           </p>
         </div>
 
-        <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 shadow-sm flex flex-col justify-between">
-          <h3 className="font-bold text-[#3FA7AC] uppercase tracking-wide text-sm">
+        <div className="bg-card/60 p-6 rounded-lg border border-gray-200 shadow-sm flex flex-col justify-between">
+          <h3 className="font-bold text-gold-gradient uppercase tracking-wide text-sm">
             Ingresos Totales (En el periodo)
           </h3>
           <p className="text-4xl font-extrabold mt-4 text-green-600">
@@ -194,8 +215,8 @@ export default function Dashboard({ usuario }: { usuario: String }) {
       </div>
 
       {/* DESGLOSE POR TIPO DE TICKET */}
-      <div className="space-y-4 bg-gray-50 p-4 sm:p-5 rounded-lg border border-gray-200">
-        <h3 className="font-bold text-[#3FA7AC] uppercase tracking-wide">
+      <div className="space-y-4 bg-card/60 p-4 sm:p-5 rounded-lg border border-gray-200 text-white">
+        <h3 className="font-bold text-gold-gradient uppercase tracking-wide">
           Desglose por Tipo de Acceso
         </h3>
 
@@ -204,7 +225,7 @@ export default function Dashboard({ usuario }: { usuario: String }) {
             Actualizando métricas...
           </p>
         ) : desglose.length === 0 ? (
-          <p className="text-sm text-gray-500 py-4">
+          <p className="text-sm  py-4">
             No hay registros de tickets en este rango de fechas.
           </p>
         ) : (
@@ -212,20 +233,18 @@ export default function Dashboard({ usuario }: { usuario: String }) {
             {desglose.map((item, index) => (
               <div
                 key={index}
-                className="bg-white p-4 rounded-md border border-gray-200 shadow-sm space-y-2"
+                className="bg-black/70 p-4 rounded-md border border-gray-200 shadow-sm space-y-2 text-white"
               >
-                <h4 className="font-bold text-base text-black">
-                  {item.nombre}
-                </h4>
-                <div className="flex justify-between text-sm text-gray-600">
+                <h4 className="font-bold text-base ">{item.nombre}</h4>
+                <div className="flex justify-between text-sm text-gray-300">
                   <span>Cantidad:</span>
-                  <span className="font-semibold text-black">
+                  <span className="font-semibold text-gold-gradient">
                     {item.cantidad}
                   </span>
                 </div>
-                <div className="flex justify-between text-sm text-gray-600 pt-1 border-t border-gray-100">
+                <div className="flex justify-between text-sm text-gray-300 pt-1 border-t border-gray-100">
                   <span>Recaudación:</span>
-                  <span className="font-bold text-[#3FA7AC]">
+                  <span className="font-bold text-gold-gradient">
                     ${item.recaudacion.toLocaleString("es-AR")}
                   </span>
                 </div>

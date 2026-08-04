@@ -3,6 +3,8 @@ import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+
 import {
   Select,
   SelectContent,
@@ -87,8 +89,9 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
       if (error) throw error;
       setTurnoAbierto(nuevoTurno);
     } catch (error) {
-      console.error("Error al abrir caja:", error);
-      alert("No se pudo abrir la caja.");
+      toast.error("ERROR AL ABRIR LA CAJA", {
+        description: `OCURRIÓ UN ERROR AL ABRIR LA CAJA ${error.message}`,
+      });
     } finally {
       setLoading(false);
     }
@@ -166,23 +169,36 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ contenido: payloadImpresion }),
       });
-      alert("¡Lote enviado a imprimir correctamente!");
+      toast.success("LOTE ENVIADO", {
+        description: `LOTE ENVIADO A IMPRIMIR CORRECTAMENTE`,
+      });
     } catch (error) {
-      console.error("Error al imprimir:", error);
-      alert("Error de conexión con la impresora local (puerto 8080).");
+      toast.error("ERROR AL IMPRIMIR", {
+        description: `ERROR DE CONEXION CON LA IMPRESORA LOCAL (PUERTO 8080)`,
+      });
     }
   };
 
   const handleGenerarLote = async () => {
     if (!data.tipo_ticket_id || !data.cantidad) {
-      return alert("Selecciona un tipo de ticket y la cantidad.");
+      return toast.error("ERROR AL GENERAR LOTE", {
+        description: `SELECCIONE UN TIPO DE TICKET Y SU CANTIDAD`,
+      });
     }
-
     if (!turnoAbierto) {
-      return alert("Debe abrir la caja antes de emitir tickets.");
+      return toast.error("ERROR AL GENERAR LOTE", {
+        description: `DEBE ABRIR LA CAJA ANTES DE EMITIR TICKETS`,
+      });
     }
 
     setLoading(true);
+    if (Number(data.cantidad) < 1) {
+      toast.error("ERROR EN LA CANTIDAD", {
+        description: "LA CANTIDAD DE TICKETS NO PUEDE SER MENOR A 1",
+      });
+      setLoading(false);
+      return;
+    }
     try {
       // 1. Registrar el Lote vinculado al turno abierto
       const { data: lote, error: errorLote } = await supabase
@@ -218,8 +234,11 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
         (t) => t.id === Number(data.tipo_ticket_id),
       );
 
-      if (!tipoSeleccionado) throw new Error("Tipo de ticket no encontrado.");
-
+      if (!tipoSeleccionado) {
+        return toast.error("ERROR AL GENERAR LOTE", {
+          description: `TIPO DE TICKET NO ENCONTRADO`,
+        });
+      }
       await enviarAImpresora(
         ticketsGuardados as TicketGenerado[],
         tipoSeleccionado.nombre,
@@ -228,8 +247,9 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
 
       setData({ ...data, cantidad: "" });
     } catch (error) {
-      console.error("Error al generar el lote:", error);
-      alert("Ocurrió un error al generar los tickets.");
+      toast.error("ERROR AL GENERAR LOTE", {
+        description: `OCURRIÓ UN ERROR AL GENERAR EL LOTE DE TICKETS ${error.message}`,
+      });
     } finally {
       setLoading(false);
     }
@@ -242,16 +262,16 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
   // Si NO hay caja abierta, muestra pantalla de bloqueo con botón para abrir
   if (!turnoAbierto) {
     return (
-      <div className="space-y-6 p-8 bg-white text-center border border-gray-200 rounded-xl shadow-lg max-w-lg mx-auto mt-10">
+      <div className="space-y-6 p-8 bg-card text-white text-center border border-gray-200 rounded-xl shadow-lg max-w-lg mx-auto mt-10">
         <h2 className="text-2xl font-bold text-red-600">Caja Cerrada</h2>
-        <p className="text-gray-600">
+        <p>
           No tienes un turno de caja abierto actualmente. Debes abrir la caja
           para comenzar a generar e imprimir tickets.
         </p>
         <Button
           onClick={handleAbrirCaja}
           disabled={loading}
-          className="w-full bg-[#3FA7AC] hover:bg-[#358f94] text-white font-bold py-3 text-lg"
+          className="w-full bg-[#C4A77D] hover:bg-[#C4A77D]/80 text-white font-bold py-3 text-lg"
         >
           {loading ? "Abriendo caja..." : "Abrir Caja"}
         </Button>
@@ -261,9 +281,9 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
 
   // Si la caja está abierta, muestra el formulario completo
   return (
-    <div className="space-y-6 sm:space-y-8 p-4 sm:p-8 bg-white text-black border border-gray-200 rounded-xl shadow-lg">
+    <div className="space-y-6 sm:space-y-8 p-4 sm:p-8 bg-card text-white border border-gray-200 rounded-xl shadow-lg">
       <div className="flex justify-between items-center border-b-2 border-black pb-3">
-        <h2 className="text-xl sm:text-2xl font-bold">
+        <h2 className="text-xl sm:text-2xl font-bold text-gold-gradient">
           Generación de Tickets (Impresión Física)
         </h2>
         <span className="bg-green-100 text-green-800 text-xs font-semibold px-2.5 py-1 rounded">
@@ -271,8 +291,8 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
         </span>
       </div>
 
-      <div className="space-y-4 bg-gray-50 p-4 sm:p-5 rounded-lg border border-gray-200">
-        <h3 className="font-bold text-[#3FA7AC] uppercase tracking-wide">
+      <div className="space-y-4 bg-card/60 p-4 sm:p-5 rounded-lg border border-gray-200">
+        <h3 className="font-bold text-gold-gradient uppercase tracking-wide">
           Configuración del Lote
         </h3>
 
@@ -283,7 +303,7 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
               value={data.tipo_ticket_id}
               onValueChange={(val) => handleSelectChange("tipo_ticket_id", val)}
             >
-              <SelectTrigger className="w-full bg-white border-[#3FA7AC]">
+              <SelectTrigger className="w-full bg-card border-[#C4A77D]">
                 <SelectValue placeholder="Seleccione qué va a imprimir" />
               </SelectTrigger>
               <SelectContent>
@@ -304,10 +324,10 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
               name="cantidad"
               type="number"
               min="1"
-              max="500"
+              max="2000"
               value={data.cantidad}
               onChange={handleChange}
-              className="bg-white focus-visible:ring-[#3FA7AC]"
+              className="bg-card focus-visible:ring-[#C4A77D]"
               placeholder="Ej: 100"
             />
           </div>

@@ -7,6 +7,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { Check, ChevronsUpDown, Camera, X, UserPlus } from "lucide-react";
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from "html5-qrcode";
+import { toast } from "sonner";
+
 import {
   Select,
   SelectContent,
@@ -268,22 +270,25 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
         .eq("id", data.socioId);
 
       if (error) throw error;
-
-      alert("Socio editado correctamente.");
+      toast.success("SOCIO MODIFICADO", {
+        description: `LOS DATOS DEL SOCIO ${data.socioNombreApellido} FUERON MODIFICADOS CORRECTAMENTE`,
+      });
     } catch (error) {
-      console.error("Error al modificar socio:", error);
-      alert("Hubo un error al registrar el socio.");
+      console.log(error);
+      toast.error("SOCIO NO MODIFICADO", {
+        description: `OCURRIÓ UN ERROR AL MODIFICAR LOS DATOS DEL SOCIO ${error.message}`,
+      });
     } finally {
       setGuardandoSocio(false);
     }
   };
 
   return (
-    <div className="space-y-6 sm:space-y-8 p-4 sm:p-8 bg-white text-black border border-gray-200 rounded-xl shadow-lg relative">
+    <div className="space-y-6 sm:space-y-8 p-4 sm:p-8 bg-card text-white border border-gray-200 rounded-xl shadow-lg relative">
       {/* MODAL NUEVO SOCIO */}
       {modalNuevoSocio && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-card/50 text-white p-4 w-full h-full">
+          <div className="bg-card rounded-xl shadow-2xl p-6 w-full max-w-md relative">
             <Button
               variant="ghost"
               size="icon"
@@ -292,7 +297,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
             >
               <X className="w-5 h-5" />
             </Button>
-            <h2 className="text-xl font-bold mb-4 border-b pb-2">
+            <h2 className="text-xl font-bold mb-4 border-b border-[#C4A77D] pb-2 text-white">
               Registrar Nuevo Socio
             </h2>
             <form onSubmit={handleCrearSocio} className="space-y-4">
@@ -334,7 +339,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
                 <Button
                   type="submit"
                   disabled={guardandoSocio}
-                  className="bg-[#3FA7AC] hover:bg-[#358f94] text-white"
+                  className="bg-[#C4A77D] hover:bg-[#C4A77D]/80 text-white "
                 >
                   {guardandoSocio ? "Guardando..." : "Guardar Socio"}
                 </Button>
@@ -344,25 +349,25 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b-2 border-black pb-3 gap-4">
+      <div className="flex flex-col sm:flex-row justify-between bg-card text-white items-start sm:items-center border-b-2 border-gold pb-3 gap-4">
         <h2 className="text-xl sm:text-2xl font-bold">
           Registrar ingreso al camping
         </h2>
         <Button
           type="button"
           onClick={() => setScannerActivo(!scannerActivo)}
-          className="bg-[#3FA7AC] hover:bg-[#358f94] text-white flex items-center gap-2"
+          className="bg-[#C4A77D] hover:bg-[#C4A77D]/80 text-white flex items-center gap-2"
         >
           <Camera className="w-4 h-4" />
-          {scannerActivo ? "Cerrar Escáner" : "Escanear Carnet / Código"}
+          {scannerActivo ? "Cerrar Escáner" : "Escanear DNI"}
         </Button>
       </div>
 
       {/* VENTANA DEL ESCÁNER DE CÁMARA */}
       {scannerActivo && (
-        <div className="bg-gray-50 p-4 rounded-lg border border-gray-300 relative">
+        <div className="bg-transparent p-4 rounded-lg relative">
           <div className="flex justify-between items-center mb-2">
-            <span className="font-bold text-sm text-[#3FA7AC]">
+            <span className="font-bold text-sm text-gold-gradient">
               Apunte la cámara al código de barras o QR
             </span>
             <Button
@@ -370,7 +375,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
               size="sm"
               onClick={() => setScannerActivo(false)}
             >
-              <X className="w-4 h-4" />
+              <X className="w-10 h-10" />
             </Button>
           </div>
           <div id="reader" className="w-full max-w-md mx-auto"></div>
@@ -387,7 +392,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
               variant="outline"
               size="sm"
               onClick={() => setModalNuevoSocio(true)}
-              className="flex items-center gap-2 h-8 text-[#3FA7AC] border-[#3FA7AC] hover:bg-[#3FA7AC] hover:text-white"
+              className="flex items-center gap-2 h-8 bg-[#C4A77D] hover:bg-[#C4A77D]/80"
             >
               <UserPlus className="w-3 h-3" />
               Nuevo Socio
@@ -400,7 +405,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
               variant="outline"
               role="combobox"
               aria-expanded={open}
-              className="w-full justify-between bg-white border-[#3FA7AC]"
+              className="w-full justify-between bg-card text-gray-300"
             >
               {data.socioDni
                 ? `${data.socioNombreApellido} (DNI: ${data.socioDni})`
@@ -451,9 +456,9 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
       </div>
 
       {/* DATOS DEL SOCIO SELECCIONADO */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-        <div className="space-y-4 bg-gray-50 p-4 sm:p-5 rounded-lg border border-gray-200">
-          <h3 className="font-bold text-[#3FA7AC] uppercase tracking-wide">
+      <div className="grid grid-cols-1 gap-6 sm:gap-8 w-full h-full">
+        <div className="space-y-4  p-4 sm:p-5 rounded-lg border border-gray-200 bg-card/60">
+          <h3 className="font-bold text-gold-gradient uppercase tracking-wide">
             Datos del Socio
           </h3>
           <div className="space-y-2">
@@ -462,7 +467,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
               name="socioNombreApellido"
               value={data.socioNombreApellido || ""}
               disabled
-              className="bg-white"
+              className="bg-card"
             />
           </div>
           <div className="space-y-2">
@@ -471,7 +476,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
               name="socioDni"
               value={data.socioDni || ""}
               disabled
-              className="bg-white"
+              className="bg-card"
             />
           </div>
           <div className="space-y-2">
@@ -493,12 +498,12 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
       </div>
       {usuario.includes("admin") && (
         <>
-          <h2 className="text-xl sm:text-2xl font-bold border-b-2 border-black pb-3">
+          <h2 className="text-xl sm:text-2xl font-bold border-b-2 border-gold pb-3">
             Modificar datos socio seleccionado
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-            <div className="space-y-4 bg-gray-50 p-4 sm:p-5 rounded-lg border border-gray-200">
-              <h3 className="font-bold text-[#3FA7AC] uppercase tracking-wide">
+          <div className="grid grid-cols-1 gap-6 sm:gap-8 h-full w-full">
+            <div className="space-y-4 bg-card/60 p-4 sm:p-5 rounded-lg border border-gray-200">
+              <h3 className="font-bold text-gold-gradient uppercase tracking-wide">
                 Datos del Socio
               </h3>
               <div className="space-y-2">
@@ -506,7 +511,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
                 <Input
                   name="socioNombreApellido"
                   value={data.socioNombreApellido || ""}
-                  className="bg-white"
+                  className="bg-card"
                   onChange={handleChange}
                 />
               </div>
@@ -515,7 +520,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
                 <Input
                   name="socioDni"
                   value={data.socioDni || ""}
-                  className="bg-white"
+                  className="bg-card"
                   onChange={handleChange}
                 />
               </div>
@@ -554,9 +559,9 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
               disabled={loading}
               size="lg"
               onClick={handleEditarSocio}
-              className="bg-[#3FA7AC] hover:bg-gray-500 text-white font-bold px-8 py-6 text-lg shadow-lg w-full sm:w-auto"
+              className="bg-black hover:bg-gray-800 text-gold font-bold px-8 py-6 text-lg shadow-lg w-full sm:w-auto transition-all"
             >
-              {loading ? "Registrando precios..." : "Editar precios"}
+              {loading ? "Modificando datos..." : "Modificar datos del socio"}
             </Button>
           </div>
         </>

@@ -90,7 +90,7 @@
   --gold: oklch(0.73 0.07 78);
   --gold-hover: oklch(0.60 0.06 78);
   /* Cambia estas líneas en tu globals.css */
---gradient-gold: linear-gradient(135deg, oklch(0.92 0.08 85), oklch(0.55 0.15 75));
+  --gradient-gold: linear-gradient(135deg, oklch(0.92 0.08 85), oklch(0.55 0.15 75));
   
   /* CHARTS Y RADIUS (Originales de tu configuración) */
   --radius: 0.625rem;

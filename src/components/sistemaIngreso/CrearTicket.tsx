@@ -4,6 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/utils/supabase/client";
+import { toast } from "sonner";
+
 import {
   Select,
   SelectContent,
@@ -60,16 +62,15 @@ export default function CrearTicket({ usuario }: { usuario: String }) {
         .from("tipos_ticket")
         .select("*")
         .order("id", { ascending: true });
-      console.log(data);
       if (error) {
-        console.error("Error al capturar precios:", error);
+        toast.error("ERROR AL CARGAR LOS PRECIOS", {
+          description: `OCURRIÓ UN ERROR AL CARGAR LOS PRECIOS ${error.message}`,
+        });
       } else if (data) {
         setPrecios(data);
       }
       const { data: tipos } = await supabase.from("tipos_ticket").select("*");
-
       if (tipos) setTiposTicket(tipos as TipoTicket[]);
-      console.log(data);
     }
 
     fetchPrecios();
@@ -77,6 +78,15 @@ export default function CrearTicket({ usuario }: { usuario: String }) {
 
   const handleGuardarTicket = async () => {
     setLoading(true);
+    if (!data.nombre || !data.precio) {
+      toast.error("TICKET NO CREADO", {
+        description: `LOS CAMPOS NO DEBEN ESTAR VACIOS`,
+      });
+    } else if (Number(data.precio) < 0) {
+      toast.error("TICKET NO CREADO", {
+        description: `EL PRECIO NO PUEDE SER MENOR A 0`,
+      });
+    }
     try {
       const { data: ticketCreado, error } = await supabase
         .from("tipos_ticket")
@@ -91,11 +101,13 @@ export default function CrearTicket({ usuario }: { usuario: String }) {
 
       // Upsert actualiza los registros existentes si el ID ya existe
       if (error) throw error;
-
-      alert("¡Ticket creado correctamente!");
+      toast.success("TICKET CREADO", {
+        description: "EL TICKET FUE CREADO CORRECTAMENTE",
+      });
     } catch (error: any) {
-      console.error("Error de red:", error);
-      alert("Error al crear: " + error.message);
+      toast.error("TICKET NO CREADO", {
+        description: `OCURRIÓ UN ERROR AL CREAR EL TICKET ${error.message}`,
+      });
     } finally {
       setLoading(false);
     }
@@ -103,23 +115,6 @@ export default function CrearTicket({ usuario }: { usuario: String }) {
   const handleChange = (e: any) => {
     setData({ ...data, [e.target.name]: e.target.value });
   };
-
-  // Obtener precios desde Supabase
-  useEffect(() => {
-    async function fetchPrecios() {
-      const { data, error } = await supabase
-        .from("tipos_ticket")
-        .select("*")
-        .order("id", { ascending: true });
-
-      if (error) {
-        console.error("Error al capturar precios:", error);
-      } else if (data) {
-        setPrecios(data);
-      }
-    }
-    fetchPrecios();
-  }, [supabase]);
 
   const handleChangePrecios = (id: number, nuevoValor: string) => {
     setPrecios((preciosAnteriores) =>
@@ -131,17 +126,29 @@ export default function CrearTicket({ usuario }: { usuario: String }) {
 
   const handleGuardarPrecios = async () => {
     setLoading(true);
-
+    if (precios) {
+      for (let Ticket of precios) {
+        if (Number(Ticket.precio) < 0) {
+          toast.error("TICKET INCORRECTO", {
+            description: `EL TICKET ${Ticket.nombre} TIENE UN VALOR INVÁLIDO`,
+          });
+        }
+      }
+      setLoading(false);
+      return;
+    }
     try {
       // Upsert actualiza los registros existentes si el ID ya existe
       const { error } = await supabase.from("tipos_ticket").upsert(precios);
 
       if (error) throw error;
-
-      alert("¡Precios actualizados correctamente!");
+      toast.success("PRECIOS ACTUALIZADOS", {
+        description: "LOS PRECIOS FUERON ACTUALIZADOS CORRECTAMENTE",
+      });
     } catch (error: any) {
-      console.error("Error de red:", error);
-      alert("Error al actualizar: " + error.message);
+      toast.error("TICKET NO ACTUALIZADOS", {
+        description: `OCURRIÓ UN ERROR AL ACTUALIZAR LOS TICKETS ${error.message}`,
+      });
     } finally {
       setLoading(false);
     }
@@ -158,14 +165,20 @@ export default function CrearTicket({ usuario }: { usuario: String }) {
         .update({ activo: estado })
         .eq("id", data.ticket);
 
-      console.log("ticket:", data.ticket);
-      console.log("Estado:", estado);
       if (error) throw error;
-
-      alert("¡Ticket desactivado correctamente!");
+      if (data.ticketEstado === "Activo") {
+        toast.success("TICKET ACTIVADO", {
+          description: `EL TICKET FUE ACTIVADO CORRECTAMENTE`,
+        });
+      } else {
+        toast.success("TICKET DESACTIVADO", {
+          description: `EL TICKET FUE DESACTIVADO CORRECTAMENTE`,
+        });
+      }
     } catch (error: any) {
-      console.error("Error de red:", error);
-      alert("Error al actualizar: " + error.message);
+      toast.error("TICKET NO DESACTIVADO", {
+        description: `EL TICKET NO FUE DESATIVADO OCURRIÓ UN ERROR ${error.message}`,
+      });
     } finally {
       setLoading(false);
     }
@@ -186,14 +199,14 @@ export default function CrearTicket({ usuario }: { usuario: String }) {
   }, [data.ticket, tiposTicket]); // Se recalcula si cambian estos valores
 
   return (
-    <div className="space-y-6 sm:space-y-8 p-4 sm:p-8 bg-white text-black border border-gray-200 rounded-xl shadow-lg">
-      <h2 className="text-xl sm:text-2xl font-bold border-b-2 border-black pb-3">
+    <div className="space-y-6 sm:space-y-8 p-4 sm:p-8 bg-card text-white border border-gray-200 rounded-xl shadow-lg w-full">
+      <h2 className="text-xl sm:text-2xl font-bold border-b-2 border-gold pb-3">
         Administración de tickets
       </h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8">
-        <div className="space-y-4 bg-gray-50 p-4 sm:p-5 rounded-lg border border-gray-200">
-          <h3 className="font-bold text-[#3FA7AC] uppercase tracking-wide">
+      <div className="grid grid-cols-1 gap-6 sm:gap-8 w-full">
+        <div className="space-y-4 bg-card/60 p-4 sm:p-5 rounded-lg border border-gray-200 w-full">
+          <h3 className="font-bold text-gold-gradient uppercase tracking-wide">
             Datos del Ticket a crear
           </h3>
           <div className="space-y-2">
@@ -202,7 +215,7 @@ export default function CrearTicket({ usuario }: { usuario: String }) {
               name="nombre"
               value={data.nombre || ""}
               onChange={handleChange}
-              className="bg-white focus-visible:ring-[#3FA7AC]"
+              className="bg-card focus-visible:ring-[#C4A77D]"
             />
           </div>
           <div className="space-y-2">
@@ -211,7 +224,7 @@ export default function CrearTicket({ usuario }: { usuario: String }) {
               name="precio"
               value={data.precio || ""}
               onChange={handleChange}
-              className="bg-white focus-visible:ring-[#3FA7AC]"
+              className="bg-card focus-visible:ring-[#C4A77D]"
             />
           </div>
         </div>
@@ -223,13 +236,13 @@ export default function CrearTicket({ usuario }: { usuario: String }) {
           disabled={loading}
           size="lg"
           onClick={handleGuardarTicket}
-          className="bg-[#3FA7AC] hover:bg-gray-500 text-white font-bold px-8 py-6 text-lg shadow-lg w-full sm:w-auto"
+          className="bg-black hover:bg-gray-800 text-gold font-bold px-8 py-6 text-lg shadow-lg w-full sm:w-auto transition-all"
         >
           {loading ? "Registrando ticket..." : "Crear ticket"}
         </Button>
       </div>
 
-      <h2 className="text-xl sm:text-2xl font-bold border-b-2 border-black pb-3">
+      <h2 className="text-xl sm:text-2xl font-bold border-b-2 border-gold pb-3">
         Editar precios de los tickets
       </h2>
 
@@ -238,13 +251,15 @@ export default function CrearTicket({ usuario }: { usuario: String }) {
         {precios.length > 0 ? (
           precios.map((ticket) => (
             <div key={ticket.id} className="space-y-2">
-              <Label className="font-semibold">{ticket.nombre}</Label>
+              <Label className="font-semibold text-white">
+                {ticket.nombre}
+              </Label>
               <Input
                 name={ticket.nombre}
                 type="number"
                 value={ticket.precio || ""}
                 onChange={(e) => handleChangePrecios(ticket.id, e.target.value)}
-                className="bg-white focus-visible:ring-[#3FA7AC]"
+                className="bg-card focus-visible:ring-[#C4A77D]"
               />
             </div>
           ))
@@ -259,7 +274,7 @@ export default function CrearTicket({ usuario }: { usuario: String }) {
           disabled={loading}
           size="lg"
           onClick={handleGuardarPrecios}
-          className="bg-[#3FA7AC] hover:bg-gray-500 text-white font-bold px-8 py-6 text-lg shadow-lg w-full sm:w-auto"
+          className="bg-black hover:bg-gray-800 text-gold font-bold px-8 py-6 text-lg shadow-lg w-full sm:w-auto transition-all"
         >
           {loading ? "Registrando precios..." : "Editar precios"}
         </Button>
@@ -277,8 +292,8 @@ export default function CrearTicket({ usuario }: { usuario: String }) {
             value={data.ticket}
             onValueChange={(val) => handleSelectChange("ticket", val)}
           >
-            <SelectTrigger className="w-full bg-white border-[#3FA7AC]">
-              <SelectValue placeholder="Seleccione qué va a imprimir" />
+            <SelectTrigger className="w-full bg-card focus-visible:ring-[#C4A77D]  ">
+              <SelectValue placeholder="Seleccione ticket a cambiar estado" />
             </SelectTrigger>
             <SelectContent>
               <SelectGroup>
@@ -298,7 +313,7 @@ export default function CrearTicket({ usuario }: { usuario: String }) {
             value={data.ticketEstado || ""}
             onValueChange={(val) => handleSelectChange("ticketEstado", val)}
           >
-            <SelectTrigger className="w-full bg-white border-[#3FA7AC]">
+            <SelectTrigger className="w-full bg-card focus-visible:ring-[#C4A77D]">
               <SelectValue placeholder="Seleccione estado" />
             </SelectTrigger>
             <SelectContent>
@@ -317,9 +332,9 @@ export default function CrearTicket({ usuario }: { usuario: String }) {
           disabled={loading}
           size="lg"
           onClick={handleBajaTicket}
-          className="bg-[#3FA7AC] hover:bg-gray-500 text-white font-bold px-8 py-6 text-lg shadow-lg w-full sm:w-auto"
+          className="bg-black hover:bg-gray-800 text-gold font-bold px-8 py-6 text-lg shadow-lg w-full sm:w-auto transition-all"
         >
-          {loading ? "Registrando precios..." : "Editar estado"}
+          {loading ? "Cambiando estado..." : "Editar estado"}
         </Button>
       </div>
     </div>
