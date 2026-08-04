@@ -17,7 +17,7 @@ export async function login(formData: FormData) {
   });
 
   if (error) {
-    redirect("/login?error=Credenciales incorrectas");
+    return { error: "LAS CREDENCIALES DE SESIÓN SON INCORRECTAS" };
   }
 
   revalidatePath("/", "layout");

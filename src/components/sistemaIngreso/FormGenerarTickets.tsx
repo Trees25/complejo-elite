@@ -88,7 +88,7 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
 
       if (error) throw error;
       setTurnoAbierto(nuevoTurno);
-    } catch (error) {
+    } catch (error: any) {
       toast.error("ERROR AL ABRIR LA CAJA", {
         description: `OCURRIÓ UN ERROR AL ABRIR LA CAJA ${error.message}`,
       });
@@ -172,7 +172,7 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
       toast.success("LOTE ENVIADO", {
         description: `LOTE ENVIADO A IMPRIMIR CORRECTAMENTE`,
       });
-    } catch (error) {
+    } catch (error: any) {
       toast.error("ERROR AL IMPRIMIR", {
         description: `ERROR DE CONEXION CON LA IMPRESORA LOCAL (PUERTO 8080)`,
       });
@@ -246,7 +246,7 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
       );
 
       setData({ ...data, cantidad: "" });
-    } catch (error) {
+    } catch (error: any) {
       toast.error("ERROR AL GENERAR LOTE", {
         description: `OCURRIÓ UN ERROR AL GENERAR EL LOTE DE TICKETS ${error.message}`,
       });

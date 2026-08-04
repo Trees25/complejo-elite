@@ -136,7 +136,7 @@ export default function Dashboard({ usuario }: { usuario: String }) {
 
         setDesglose(arrayDesglose);
       }
-    } catch (error) {
+    } catch (error: any) {
       toast.error("ERROR AL CARGAR METRICAS", {
         description: `OCURRIÓ UN ERROR AL CARGAR LAS METRICAS ${error.message}`,
       });

@@ -132,7 +132,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
             if (scanner) {
               await scanner.clear();
             }
-          } catch (error) {
+          } catch (error: any) {
             console.error("Error al limpiar:", error);
           } finally {
             setScannerActivo(false);
@@ -218,7 +218,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
 
       // Auto-seleccionar el socio creado
       handleSeleccionarSocio(String(socioCreado.dni));
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error al crear socio:", error);
       alert("Hubo un error al registrar el socio.");
     } finally {
@@ -246,9 +246,10 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
         socioId: "",
       });
       setIngresantes([]);
-    } catch (error) {
-      console.error("Error al registrar:", error);
-      alert("No se pudo registrar el ingreso.");
+    } catch (error: any) {
+      toast.error("ERROR AL REGISTRAR", {
+        description: `NO SE PUEDO REGISTRAR EL INGRESO ${error.message}`,
+      });
     } finally {
       setLoading(false);
     }
@@ -273,8 +274,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
       toast.success("SOCIO MODIFICADO", {
         description: `LOS DATOS DEL SOCIO ${data.socioNombreApellido} FUERON MODIFICADOS CORRECTAMENTE`,
       });
-    } catch (error) {
-      console.log(error);
+    } catch (error: any) {
       toast.error("SOCIO NO MODIFICADO", {
         description: `OCURRIÓ UN ERROR AL MODIFICAR LOS DATOS DEL SOCIO ${error.message}`,
       });
