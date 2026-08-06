@@ -25,7 +25,7 @@ export default function CierreCaja({ usuario }: { usuario: string }) {
   // Validación de permisos
   if (!usuario || !usuario.includes("admin")) {
     return (
-      <div className="p-8 bg-red-100 text-red-800 border border-red-300 rounded-lg">
+      <div className="p-8 bg-red-100 text-red-800 border border-red-300 rounded-lg dark:bg-red-950/50 dark:text-red-400 dark:border-red-900/50">
         <h2 className="font-bold text-xl">Acceso Denegado</h2>
         <p>
           No tienes los permisos de administrador necesarios para esta sección.
@@ -161,25 +161,27 @@ export default function CierreCaja({ usuario }: { usuario: string }) {
   };
 
   return (
-    <div className="p-4 sm:p-8 space-y-6 bg-card text-white rounded-xl shadow-lg border border-gray-200">
-      <div className="border-b-2 border-gold pb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center">
+    <div className="p-4 sm:p-8 space-y-6 bg-white text-gray-900 rounded-xl shadow-lg border border-gray-200 dark:bg-zinc-950 dark:text-white dark:border-white/10 dark:shadow-2xl dark:shadow-black/80 transition-colors duration-300">
+      <div className="border-b-2 border-[#C4A77D] pb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center">
         <div>
-          <h2 className="text-2xl font-bold uppercase tracking-wide">
+          <h2 className="text-2xl font-bold uppercase tracking-wide text-gray-900 dark:text-white">
             Cierre de Caja
           </h2>
-          <p className="text-gray-200 capitalize">{fechaHoy}</p>
+          <p className="text-gray-600 dark:text-zinc-300 capitalize">
+            {fechaHoy}
+          </p>
         </div>
         <Button
           onClick={consultarCajaHoy}
           disabled={loading || guardando}
-          className="bg-[#C4A77D] hover:bg-[#C4A77D]/80 text-white font-bold mt-4 sm:mt-0"
+          className="bg-[#C4A77D] hover:bg-[#C4A77D]/90 text-white dark:text-black font-bold mt-4 sm:mt-0 bg-gradient-to-br from-[#E2C792] via-[#C4A77D] to-[#8A7350] dark:border dark:border-[#E2C792]/40 shadow-lg"
         >
           {loading ? "Calculando..." : "Consultar Totales de Hoy"}
         </Button>
       </div>
 
       {!datosCierre && !loading && (
-        <div className="text-center py-12 text-gray-400">
+        <div className="text-center py-12 text-gray-500 dark:text-zinc-400">
           <p>
             Presiona "Consultar Totales de Hoy" para ver la recaudación del
             turno abierto.
@@ -189,7 +191,7 @@ export default function CierreCaja({ usuario }: { usuario: string }) {
 
       {datosCierre && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <h3 className="font-bold text-gray-300 uppercase">
+          <h3 className="font-bold text-gray-700 dark:text-zinc-300 uppercase">
             Detalle por Tipo de Ticket
           </h3>
 
@@ -197,15 +199,15 @@ export default function CierreCaja({ usuario }: { usuario: string }) {
             {datosCierre.detalles.map((item, index) => (
               <div
                 key={index}
-                className="bg-card p-6 rounded-lg border border-gray-200 shadow-sm flex flex-col justify-center"
+                className="bg-gray-50 p-6 rounded-lg border border-gray-200 shadow-sm flex flex-col justify-center dark:bg-zinc-900/80 dark:backdrop-blur-xl dark:border-white/10 dark:ring-1 dark:ring-white/5 transition-colors duration-300"
               >
-                <span className="text-sm font-bold  uppercase">
+                <span className="text-sm font-bold uppercase text-gray-900 dark:text-white">
                   {item.tipo_ticket}
                 </span>
-                <span className="text-xs text-gray-300 font-semibold mb-1">
+                <span className="text-xs text-gray-500 dark:text-zinc-400 font-semibold mb-1">
                   Cantidad vendida: {item.cantidad}
                 </span>
-                <span className="text-3xl font-black text-gold">
+                <span className="text-3xl font-black text-[#C4A77D]">
                   ${Number(item.recaudacion).toLocaleString("es-AR")}
                 </span>
               </div>
@@ -213,18 +215,18 @@ export default function CierreCaja({ usuario }: { usuario: string }) {
 
             {/* Si no hay ventas, mostrar mensaje */}
             {datosCierre.detalles.length === 0 && (
-              <p className="text-gray-400 text-sm">
+              <p className="text-gray-500 dark:text-zinc-400 text-sm">
                 No se han emitido tickets en este turno.
               </p>
             )}
           </div>
 
-          <div className="bg-card p-6 rounded-lg border border-gray-200 flex flex-col sm:flex-row justify-between items-center">
+          <div className="bg-gray-50 p-6 rounded-lg border border-gray-200 flex flex-col sm:flex-row justify-between items-center dark:bg-zinc-900/80 dark:backdrop-blur-xl dark:border-white/10 dark:ring-1 dark:ring-white/5 transition-colors duration-300">
             <div>
-              <p className="text-sm font-bold text-gold-gradient uppercase">
+              <p className="text-sm font-bold text-[#C4A77D] uppercase">
                 Recaudación Total del Turno
               </p>
-              <p className="text-5xl font-black text-gold-gradient mt-1">
+              <p className="text-5xl font-black text-[#C4A77D] mt-1">
                 ${Number(datosCierre.gran_total).toLocaleString("es-AR")}
               </p>
             </div>
@@ -233,7 +235,7 @@ export default function CierreCaja({ usuario }: { usuario: string }) {
               onClick={guardarCierreDefinitivo}
               disabled={guardando}
               size="lg"
-              className="bg-black hover:bg-gray-800 text-gold font-bold px-8 py-6 text-lg shadow-lg w-full sm:w-auto transition-all"
+              className="bg-[#C4A77D] hover:bg-[#C4A77D]/90 text-white dark:text-black font-bold px-8 py-6 text-lg shadow-lg w-full sm:w-auto mt-4 sm:mt-0 transition-all bg-gradient-to-br from-[#E2C792] via-[#C4A77D] to-[#8A7350] dark:border dark:border-[#E2C792]/40"
             >
               {guardando ? "Cerrando..." : "Cerrar Turno de Caja"}
             </Button>

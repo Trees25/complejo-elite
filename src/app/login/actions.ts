@@ -20,6 +20,6 @@ export async function login(formData: FormData) {
     return { error: "LAS CREDENCIALES DE SESIÓN SON INCORRECTAS" };
   }
 
-  revalidatePath("/", "layout");
+  //revalidatePath("/", "layout");
   redirect("/sistema-ingreso"); // Redirige al sistema tras login exitoso
 }

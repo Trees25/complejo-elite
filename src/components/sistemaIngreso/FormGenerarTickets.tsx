@@ -29,13 +29,21 @@ interface TicketGenerado {
 export default function FormGenerarTickets({ usuario }: { usuario: String }) {
   const supabase = createClient();
   const [loading, setLoading] = useState(false);
+  const [loadingSobrantes, setLoadingSobrantes] = useState(false);
   const [cargandoTurno, setCargandoTurno] = useState(true);
   const [turnoAbierto, setTurnoAbierto] = useState<{ id: string } | null>(null);
   const [tiposTicket, setTiposTicket] = useState<TipoTicket[]>([]);
 
+  // Estado para impresión
   const [data, setData] = useState({
     tipo_ticket_id: "",
     cantidad: "10",
+  });
+
+  // Estado para sobrantes
+  const [sobranteData, setSobranteData] = useState({
+    tipo_ticket_id: "",
+    cantidad: "",
   });
 
   // 1. Verificar turno abierto y cargar tipos de tickets al iniciar
@@ -46,7 +54,6 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
       } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Buscar turno abierto del usuario
       const { data: turno } = await supabase
         .from("turnos_caja")
         .select("id")
@@ -56,7 +63,6 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
 
       setTurnoAbierto(turno);
 
-      // Cargar tipos de tickets
       const { data: tipos } = await supabase
         .from("tipos_ticket")
         .select("*")
@@ -200,7 +206,6 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
       return;
     }
     try {
-      // 1. Registrar el Lote vinculado al turno abierto
       const { data: lote, error: errorLote } = await supabase
         .from("lotes_impresion")
         .insert({
@@ -213,7 +218,6 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
 
       if (errorLote) throw errorLote;
 
-      // 2. Preparar tickets
       const ticketsAInsertar = Array.from({
         length: Number(data.cantidad),
       }).map(() => ({
@@ -222,7 +226,6 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
         estado: "IMPRESO",
       }));
 
-      // 3. Insertar tickets
       const { data: ticketsGuardados, error: errorTickets } = await supabase
         .from("tickets")
         .insert(ticketsAInsertar)
@@ -255,23 +258,87 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
     }
   };
 
+  // 3. Función para anular los X últimos tickets del turno actual
+  const handleDeclararSobrantes = async () => {
+    if (!sobranteData.tipo_ticket_id || !sobranteData.cantidad) {
+      return toast.error("DATOS INCOMPLETOS", {
+        description: "Seleccione el tipo de ticket y la cantidad sobrante.",
+      });
+    }
+
+    const cantidadSobrante = Number(sobranteData.cantidad);
+    if (cantidadSobrante <= 0) {
+      return toast.error("CANTIDAD INVÁLIDA", {
+        description: "La cantidad debe ser mayor a 0.",
+      });
+    }
+
+    setLoadingSobrantes(true);
+    try {
+      const { data: tickets, error: fetchError } = await supabase
+        .from("tickets")
+        .select("id, lotes_impresion!inner(turno_caja_id)")
+        .eq("lotes_impresion.turno_caja_id", turnoAbierto!.id)
+        .eq("tipo_ticket_id", Number(sobranteData.tipo_ticket_id))
+        .neq("estado", "SOBRANTE")
+        .order("id", { ascending: false })
+        .limit(cantidadSobrante);
+
+      if (fetchError) throw fetchError;
+
+      if (!tickets || tickets.length < cantidadSobrante) {
+        toast.error("EXCEDE EL LÍMITE", {
+          description: `No puede declarar ${cantidadSobrante} sobrantes. Solo hay ${tickets?.length || 0} tickets disponibles de este tipo en su turno actual.`,
+        });
+        setLoadingSobrantes(false);
+        return;
+      }
+
+      const idsActualizar = tickets.map((t) => t.id);
+
+      const { error: updateError } = await supabase
+        .from("tickets")
+        .update({ estado: "SOBRANTE" })
+        .in("id", idsActualizar);
+
+      if (updateError) throw updateError;
+
+      toast.success("SOBRANTES DECLARADOS", {
+        description: `Se marcaron los últimos ${cantidadSobrante} tickets como sobrantes correctamente.`,
+      });
+
+      setSobranteData({ tipo_ticket_id: "", cantidad: "" });
+    } catch (error: any) {
+      toast.error("ERROR AL DECLARAR", {
+        description: `OCURRIÓ UN ERROR: ${error.message}`,
+      });
+    } finally {
+      setLoadingSobrantes(false);
+    }
+  };
+
   if (cargandoTurno) {
-    return <div className="p-8 text-center">Verificando estado de caja...</div>;
+    return (
+      <div className="p-8 text-center text-gray-900 dark:text-zinc-400">
+        Verificando estado de caja...
+      </div>
+    );
   }
 
-  // Si NO hay caja abierta, muestra pantalla de bloqueo con botón para abrir
   if (!turnoAbierto) {
     return (
-      <div className="space-y-6 p-8 bg-card text-white text-center border border-gray-200 rounded-xl shadow-lg max-w-lg mx-auto mt-10">
-        <h2 className="text-2xl font-bold text-red-600">Caja Cerrada</h2>
-        <p>
+      <div className="space-y-6 p-8 bg-white text-gray-900 text-center border border-gray-200 rounded-xl shadow-lg max-w-lg mx-auto mt-10 dark:bg-zinc-950 dark:text-white dark:border-white/10 dark:shadow-2xl dark:shadow-black/80 transition-colors duration-300">
+        <h2 className="text-2xl font-bold text-red-600 dark:text-red-400">
+          Caja Cerrada
+        </h2>
+        <p className="text-gray-600 dark:text-zinc-300">
           No tienes un turno de caja abierto actualmente. Debes abrir la caja
           para comenzar a generar e imprimir tickets.
         </p>
         <Button
           onClick={handleAbrirCaja}
           disabled={loading}
-          className="w-full bg-[#C4A77D] hover:bg-[#C4A77D]/80 text-white font-bold py-3 text-lg"
+          className="w-full bg-[#C4A77D] hover:bg-[#C4A77D]/90 text-white dark:text-black font-bold py-3 text-lg transition-all bg-gradient-to-br from-[#E2C792] via-[#C4A77D] to-[#8A7350] dark:border dark:border-[#E2C792]/40 shadow-lg"
         >
           {loading ? "Abriendo caja..." : "Abrir Caja"}
         </Button>
@@ -279,70 +346,154 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
     );
   }
 
-  // Si la caja está abierta, muestra el formulario completo
   return (
-    <div className="space-y-6 sm:space-y-8 p-4 sm:p-8 bg-card text-white border border-gray-200 rounded-xl shadow-lg">
-      <div className="flex justify-between items-center border-b-2 border-black pb-3">
-        <h2 className="text-xl sm:text-2xl font-bold text-gold-gradient">
-          Generación de Tickets (Impresión Física)
+    <div className="space-y-6 sm:space-y-8 p-4 sm:p-8 bg-white text-gray-900 border border-gray-200 rounded-xl shadow-lg dark:bg-zinc-950 dark:text-white dark:border-white/10 dark:shadow-2xl dark:shadow-black/80 transition-colors duration-300">
+      <div className="flex justify-between items-center border-b-2 border-[#C4A77D] pb-3">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
+          Control de Tickets
         </h2>
-        <span className="bg-green-100 text-green-800 text-xs font-semibold px-2.5 py-1 rounded">
+        <span className="bg-green-100 text-green-800 text-xs font-semibold px-2.5 py-1 rounded dark:bg-green-950/60 dark:text-green-400 dark:border dark:border-green-800/40">
           Caja Abierta
         </span>
       </div>
 
-      <div className="space-y-4 bg-card/60 p-4 sm:p-5 rounded-lg border border-gray-200">
-        <h3 className="font-bold text-gold-gradient uppercase tracking-wide">
-          Configuración del Lote
-        </h3>
+      {/* SECCIÓN 1: IMPRESIÓN */}
+      <div className="grid grid-cols-1 gap-6 sm:gap-8 w-full h-full">
+        <div className="space-y-4 bg-gray-50 p-4 sm:p-5 rounded-lg border border-gray-200 dark:bg-zinc-900/80 dark:backdrop-blur-xl dark:border-white/10 dark:ring-1 dark:ring-white/5 transition-colors duration-300">
+          <h3 className="font-bold text-[#C4A77D] uppercase tracking-wide">
+            Generar Impresión Física
+          </h3>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label className="font-semibold">Tipo de Acceso</Label>
-            <Select
-              value={data.tipo_ticket_id}
-              onValueChange={(val) => handleSelectChange("tipo_ticket_id", val)}
-            >
-              <SelectTrigger className="w-full bg-card border-[#C4A77D]">
-                <SelectValue placeholder="Seleccione qué va a imprimir" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectGroup>
-                  {tiposTicket.map((tipo) => (
-                    <SelectItem key={tipo.id} value={String(tipo.id)}>
-                      {tipo.nombre} - ${tipo.precio}
-                    </SelectItem>
-                  ))}
-                </SelectGroup>
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="font-semibold text-gray-700 dark:text-zinc-300">
+                Tipo de Acceso
+              </Label>
+              <Select
+                value={data.tipo_ticket_id}
+                onValueChange={(val) =>
+                  handleSelectChange("tipo_ticket_id", val)
+                }
+              >
+                <SelectTrigger className="w-full bg-white border-[#C4A77D] text-gray-900 dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white">
+                  <SelectValue placeholder="Seleccione qué va a imprimir" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-gray-200 text-gray-900 dark:bg-zinc-900 dark:border-white/10 dark:text-white">
+                  <SelectGroup>
+                    {tiposTicket.map((tipo) => (
+                      <SelectItem
+                        key={tipo.id}
+                        value={String(tipo.id)}
+                        className="hover:bg-gray-100 dark:hover:bg-zinc-800 cursor-pointer"
+                      >
+                        {tipo.nombre} - ${tipo.precio}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="font-semibold text-gray-700 dark:text-zinc-300">
+                Cantidad a imprimir
+              </Label>
+              <Input
+                name="cantidad"
+                type="number"
+                min="1"
+                max="2000"
+                value={data.cantidad}
+                onChange={handleChange}
+                className="bg-white text-gray-900 focus-visible:ring-[#C4A77D] border-[#C4A77D] dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white dark:shadow-inner transition-colors duration-300"
+                placeholder="Ej: 100"
+              />
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <Label className="font-semibold">Cantidad a imprimir</Label>
-            <Input
-              name="cantidad"
-              type="number"
-              min="1"
-              max="2000"
-              value={data.cantidad}
-              onChange={handleChange}
-              className="bg-card focus-visible:ring-[#C4A77D]"
-              placeholder="Ej: 100"
-            />
+          <div className="pt-2 flex flex-col sm:flex-row justify-end gap-4">
+            <Button
+              disabled={loading || !data.tipo_ticket_id}
+              size="lg"
+              onClick={handleGenerarLote}
+              className="bg-[#C4A77D] hover:bg-[#C4A77D]/90 text-white dark:text-black font-bold px-8 py-6 text-lg shadow-lg w-full sm:w-auto transition-all bg-gradient-to-br from-[#E2C792] via-[#C4A77D] to-[#8A7350] dark:border dark:border-[#E2C792]/40"
+            >
+              {loading ? "Generando e Imprimiendo..." : "Imprimir Lote"}
+            </Button>
           </div>
         </div>
       </div>
 
-      <div className="pt-6 flex flex-col sm:flex-row justify-end gap-4">
-        <Button
-          disabled={loading || !data.tipo_ticket_id}
-          size="lg"
-          onClick={handleGenerarLote}
-          className="bg-black hover:bg-gray-800 text-gold font-bold px-8 py-6 text-lg shadow-lg w-full sm:w-auto transition-all"
-        >
-          {loading ? "Generando e Imprimiendo..." : "Imprimir Lote"}
-        </Button>
+      {/* SECCIÓN 2: SOBRANTES (NUEVA) */}
+      <div className="grid grid-cols-1 gap-6 sm:gap-8 w-full h-full">
+        <div className="space-y-4 p-4 sm:p-5 rounded-lg border border-gray-200 bg-gray-50 dark:bg-zinc-900/80 dark:backdrop-blur-xl dark:border-white/10 dark:ring-1 dark:ring-white/5 transition-colors duration-300">
+          <h3 className="font-bold text-[#C4A77D] uppercase tracking-wide">
+            Declarar Tickets Sobrantes
+          </h3>
+          <p className="text-sm text-gray-600 dark:text-zinc-300">
+            Indique el tipo de ticket y la cantidad sobrante. El sistema anulará
+            los <strong>últimos tickets generados</strong> de ese tipo durante
+            su turno actual.
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="font-semibold text-gray-700 dark:text-zinc-300">
+                Tipo de Acceso
+              </Label>
+              <Select
+                value={sobranteData.tipo_ticket_id}
+                onValueChange={(val) =>
+                  setSobranteData({ ...sobranteData, tipo_ticket_id: val })
+                }
+              >
+                <SelectTrigger className="w-full bg-white border-[#C4A77D] text-gray-900 dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white">
+                  <SelectValue placeholder="Seleccione el tipo" />
+                </SelectTrigger>
+                <SelectContent className="bg-white border-gray-200 text-gray-900 dark:bg-zinc-900 dark:border-[#C4A77D] dark:text-white">
+                  <SelectGroup>
+                    {tiposTicket.map((tipo) => (
+                      <SelectItem
+                        key={tipo.id}
+                        value={String(tipo.id)}
+                        className="hover:bg-gray-100 dark:hover:bg-zinc-800 cursor-pointer"
+                      >
+                        {tipo.nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="font-semibold text-gray-700 dark:text-zinc-300">
+                Cantidad Sobrante
+              </Label>
+              <Input
+                type="number"
+                min="1"
+                value={sobranteData.cantidad}
+                onChange={(e) =>
+                  setSobranteData({ ...sobranteData, cantidad: e.target.value })
+                }
+                className="bg-white text-gray-900 focus-visible:ring-[#C4A77D] border-[#C4A77D] dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white dark:shadow-inner transition-colors duration-300"
+                placeholder="Ej: 10"
+              />
+            </div>
+          </div>
+
+          <div className="pt-2 flex flex-col sm:flex-row justify-end gap-4">
+            <Button
+              disabled={loadingSobrantes || !sobranteData.tipo_ticket_id}
+              size="lg"
+              onClick={handleDeclararSobrantes}
+              className="bg-[#C4A77D] hover:bg-red-600 hover:text-white text-white dark:text-black dark:hover:bg-red-500 dark:hover:text-white font-bold px-8 py-6 text-lg shadow-lg w-full sm:w-auto transition-all"
+            >
+              {loadingSobrantes ? "Procesando..." : "Marcar como Sobrantes"}
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -5,7 +5,14 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import { Check, ChevronsUpDown, Camera, X, UserPlus } from "lucide-react";
+import {
+  Check,
+  ChevronsUpDown,
+  Camera,
+  X,
+  UserPlus,
+  Upload,
+} from "lucide-react";
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { toast } from "sonner";
 
@@ -39,11 +46,6 @@ interface Socio {
   estado: boolean;
 }
 
-interface UsuarioProps {
-  id: string;
-  rol: string;
-}
-
 export default function FormIngreso({ usuario }: { usuario: String }) {
   const supabase = createClient();
   const [socios, setSocios] = useState<Socio[]>([]);
@@ -60,6 +62,11 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
     dni: "",
     nombre_completo: "",
   });
+
+  // Estados para el modal de importación CSV
+  const [modalImportar, setModalImportar] = useState(false);
+  const [importando, setImportando] = useState(false);
+  const [fileCsv, setFileCsv] = useState<File | null>(null);
 
   const [data, setData] = useState({
     socioId: "",
@@ -80,7 +87,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
     (!usuario.includes("admin") && !usuario.includes("ingreso"))
   ) {
     return (
-      <div className="p-8 bg-red-100 text-red-800 border border-red-300 rounded-lg">
+      <div className="p-8 bg-red-100 text-red-800 border border-red-300 rounded-lg dark:bg-red-950/50 dark:text-red-400 dark:border-red-900/50">
         <h2 className="font-bold text-xl">Acceso Denegado</h2>
         <p>No tienes los permisos necesarios para esta sección.</p>
       </div>
@@ -88,18 +95,19 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
   }
 
   // Cargar socios desde Supabase
-  useEffect(() => {
-    async function fetchSocios() {
-      const { data: sociosData, error } = await supabase
-        .from("socios")
-        .select("id, dni, nombre_completo, estado");
+  const fetchSocios = async () => {
+    const { data: sociosData, error } = await supabase
+      .from("socios")
+      .select("id, dni, nombre_completo, estado");
 
-      if (error) {
-        console.error("Error al cargar socios:", error);
-      } else if (sociosData) {
-        setSocios(sociosData);
-      }
+    if (error) {
+      console.error("Error al cargar socios:", error);
+    } else if (sociosData) {
+      setSocios(sociosData);
     }
+  };
+
+  useEffect(() => {
     fetchSocios();
   }, [supabase]);
 
@@ -119,7 +127,6 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
 
       scanner.render(
         async (decodedText) => {
-          console.log(decodedText.trim());
           const partes = decodedText.split("@");
 
           let dniBuscado = decodedText.trim();
@@ -186,7 +193,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
     setData({ ...data, [name]: value });
   };
 
-  // Función para registrar nuevo socio en DB
+  // Función para registrar nuevo socio individual en DB
   const handleCrearSocio = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nuevoSocio.dni || !nuevoSocio.nombre_completo) {
@@ -209,14 +216,10 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
 
       if (error) throw error;
 
-      // Actualizar estado local
       setSocios((prev) => [...prev, socioCreado]);
-
       alert("Socio registrado correctamente.");
       setModalNuevoSocio(false);
       setNuevoSocio({ dni: "", nombre_completo: "" });
-
-      // Auto-seleccionar el socio creado
       handleSeleccionarSocio(String(socioCreado.dni));
     } catch (error: any) {
       console.error("Error al crear socio:", error);
@@ -226,6 +229,83 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
     }
   };
 
+  // Función para importar socios masivamente por CSV (Upsert)
+  const handleImportarCSV = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!fileCsv) {
+      return toast.error("ARCHIVO FALTANTE", {
+        description: "Debe seleccionar un archivo CSV para importar.",
+      });
+    }
+
+    setImportando(true);
+    const reader = new FileReader();
+
+    reader.onload = async (e) => {
+      try {
+        const text = e.target?.result as string;
+        if (!text) throw new Error("El archivo está vacío");
+
+        const filas = text
+          .split("\n")
+          .map((f) => f.trim())
+          .filter((f) => f.length > 0);
+        const tieneCabeceras =
+          filas[0].toLowerCase().includes("nombre") ||
+          filas[0].toLowerCase().includes("dni");
+        const datos = tieneCabeceras ? filas.slice(1) : filas;
+
+        const sociosUpsert = datos.map((fila, index) => {
+          const columnas = fila.split(";");
+
+          if (columnas.length < 3) {
+            throw new Error(
+              `Fila ${index + 1} incompleta. Formato requerido: Nombre;DNI;Estado`,
+            );
+          }
+
+          const [nombre, dni, estado] = columnas;
+
+          return {
+            nombre_completo: nombre.trim().toUpperCase(),
+            dni: dni.trim(),
+            estado:
+              estado.trim().toLowerCase() === "true" ||
+              estado.trim().toLowerCase() === "activo",
+          };
+        });
+
+        // UPSERT: Inserta si no existe, actualiza si existe (basado en onConflict: 'dni')
+        const { error } = await supabase
+          .from("socios")
+          .upsert(sociosUpsert, { onConflict: "dni" });
+
+        if (error) throw error;
+
+        toast.success("IMPORTACIÓN EXITOSA", {
+          description: `Se procesaron ${sociosUpsert.length} socios correctamente.`,
+        });
+
+        setModalImportar(false);
+        setFileCsv(null);
+        fetchSocios(); // Refrescar lista
+      } catch (error: any) {
+        toast.error("ERROR DE IMPORTACIÓN", {
+          description: error.message,
+        });
+      } finally {
+        setImportando(false);
+      }
+    };
+
+    reader.onerror = () => {
+      toast.error("ERROR", { description: "No se pudo leer el archivo." });
+      setImportando(false);
+    };
+
+    reader.readAsText(fileCsv);
+  };
+
   const handleRegistrarIngreso = async () => {
     if (!data.socioDni) {
       return alert("Debe seleccionar un socio antes de registrar el ingreso.");
@@ -233,7 +313,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
 
     setLoading(true);
     try {
-      // Aquí puedes agregar la lógica para guardar el ingreso en tu tabla de Supabase
+      // Aquí lógica de registro de ingreso
       alert("¡Ingreso registrado correctamente!");
       setData({
         socioNombreApellido: "",
@@ -265,7 +345,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
           {
             dni: data.socioDni,
             nombre_completo: data.socioNombreApellido.toUpperCase(),
-            estado: estadoSocio, // Activo por defecto
+            estado: estadoSocio,
           },
         ])
         .eq("id", data.socioId);
@@ -274,6 +354,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
       toast.success("SOCIO MODIFICADO", {
         description: `LOS DATOS DEL SOCIO ${data.socioNombreApellido} FUERON MODIFICADOS CORRECTAMENTE`,
       });
+      fetchSocios(); // Refrescar estado local
     } catch (error: any) {
       toast.error("SOCIO NO MODIFICADO", {
         description: `OCURRIÓ UN ERROR AL MODIFICAR LOS DATOS DEL SOCIO ${error.message}`,
@@ -284,25 +365,25 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
   };
 
   return (
-    <div className="space-y-6 sm:space-y-8 p-4 sm:p-8 bg-card text-white border border-gray-200 rounded-xl shadow-lg relative">
-      {/* MODAL NUEVO SOCIO */}
+    <div className="space-y-6 sm:space-y-8 p-4 sm:p-8 bg-white text-gray-900 border border-gray-200 rounded-xl shadow-lg relative dark:bg-zinc-950 dark:text-white dark:border-white/10 dark:shadow-2xl dark:shadow-black/80 transition-colors duration-300">
+      {/* MODAL NUEVO SOCIO (Individual) */}
       {modalNuevoSocio && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-card/50 text-white p-4 w-full h-full">
-          <div className="bg-card rounded-xl shadow-2xl p-6 w-full max-w-md relative">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 dark:bg-card/50 p-4 w-full h-full backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md relative border border-gray-200 dark:bg-zinc-900 dark:border-white/10">
             <Button
               variant="ghost"
               size="icon"
-              className="absolute right-4 top-4"
+              className="absolute right-4 top-4 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-zinc-800"
               onClick={() => setModalNuevoSocio(false)}
             >
               <X className="w-5 h-5" />
             </Button>
-            <h2 className="text-xl font-bold mb-4 border-b border-[#C4A77D] pb-2 text-white">
+            <h2 className="text-xl font-bold mb-4 border-b border-[#C4A77D] pb-2 text-gray-900 dark:text-white">
               Registrar Nuevo Socio
             </h2>
             <form onSubmit={handleCrearSocio} className="space-y-4">
               <div className="space-y-2">
-                <Label>DNI</Label>
+                <Label className="text-gray-700 dark:text-zinc-300">DNI</Label>
                 <Input
                   type="number"
                   placeholder="Ej: 35123456"
@@ -311,10 +392,13 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
                     setNuevoSocio({ ...nuevoSocio, dni: e.target.value })
                   }
                   required
+                  className="bg-white border-gray-300 text-gray-900 focus-visible:ring-[#C4A77D] dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white dark:shadow-inner"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Nombre Completo</Label>
+                <Label className="text-gray-700 dark:text-zinc-300">
+                  Nombre Completo
+                </Label>
                 <Input
                   type="text"
                   placeholder="Ej: JUAN PEREZ"
@@ -326,6 +410,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
                     })
                   }
                   required
+                  className="bg-white border-gray-300 text-gray-900 focus-visible:ring-[#C4A77D] dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white dark:shadow-inner"
                 />
               </div>
               <div className="pt-4 flex justify-end gap-3">
@@ -333,13 +418,14 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
                   type="button"
                   variant="outline"
                   onClick={() => setModalNuevoSocio(false)}
+                  className="border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-zinc-800"
                 >
                   Cancelar
                 </Button>
                 <Button
                   type="submit"
                   disabled={guardandoSocio}
-                  className="bg-[#C4A77D] hover:bg-[#C4A77D]/80 text-white "
+                  className="bg-[#C4A77D] hover:bg-[#C4A77D]/90 text-white dark:text-black font-bold bg-gradient-to-br from-[#E2C792] via-[#C4A77D] to-[#8A7350]"
                 >
                   {guardandoSocio ? "Guardando..." : "Guardar Socio"}
                 </Button>
@@ -349,14 +435,77 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
         </div>
       )}
 
-      <div className="flex flex-col sm:flex-row justify-between bg-card text-white items-start sm:items-center border-b-2 border-gold pb-3 gap-4">
-        <h2 className="text-xl sm:text-2xl font-bold">
+      {/* MODAL IMPORTAR CSV */}
+      {modalImportar && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 dark:bg-card/50 p-4 w-full h-full backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md relative border border-gray-200 dark:bg-zinc-900 dark:border-white/10">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-4 top-4 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-zinc-800"
+              onClick={() => {
+                setModalImportar(false);
+                setFileCsv(null);
+              }}
+            >
+              <X className="w-5 h-5" />
+            </Button>
+            <h2 className="text-xl font-bold mb-4 border-b border-[#C4A77D] pb-2 text-gray-900 dark:text-white">
+              Importar Socios (CSV)
+            </h2>
+            <form onSubmit={handleImportarCSV} className="space-y-4">
+              <p className="text-sm text-gray-600 dark:text-zinc-300 mb-4">
+                El archivo debe estar separado por punto y coma (;) con el
+                formato: <br />
+                <code className="bg-gray-100 dark:bg-zinc-950 px-2 py-1 rounded text-[#C4A77D] font-medium border border-gray-200 dark:border-white/10">
+                  Nombre;DNI;true/false
+                </code>
+              </p>
+              <div className="space-y-2">
+                <Label className="text-gray-700 dark:text-zinc-300">
+                  Archivo CSV
+                </Label>
+                <Input
+                  type="file"
+                  accept=".csv"
+                  onChange={(e) => setFileCsv(e.target.files?.[0] || null)}
+                  required
+                  className="bg-white border-gray-300 text-gray-900 focus-visible:ring-[#C4A77D] cursor-pointer dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white dark:shadow-inner"
+                />
+              </div>
+              <div className="pt-4 flex justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setModalImportar(false);
+                    setFileCsv(null);
+                  }}
+                  className="border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={importando || !fileCsv}
+                  className="bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600 font-bold"
+                >
+                  {importando ? "Procesando..." : "Subir e Importar"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-col sm:flex-row justify-between bg-transparent items-start sm:items-center border-b-2 border-gold pb-3 gap-4">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
           Registrar ingreso al camping
         </h2>
         <Button
           type="button"
           onClick={() => setScannerActivo(!scannerActivo)}
-          className="bg-[#C4A77D] hover:bg-[#C4A77D]/80 text-white flex items-center gap-2"
+          className="bg-[#C4A77D] hover:bg-[#C4A77D]/90 text-white dark:text-black font-bold flex items-center gap-2 bg-gradient-to-br from-[#E2C792] via-[#C4A77D] to-[#8A7350] dark:border dark:border-[#E2C792]/40 shadow-lg"
         >
           <Camera className="w-4 h-4" />
           {scannerActivo ? "Cerrar Escáner" : "Escanear DNI"}
@@ -365,38 +514,53 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
 
       {/* VENTANA DEL ESCÁNER DE CÁMARA */}
       {scannerActivo && (
-        <div className="bg-transparent p-4 rounded-lg relative">
+        <div className="bg-gray-50 border border-gray-300 dark:bg-zinc-900/80 dark:backdrop-blur-xl dark:border-white/10 p-4 rounded-lg relative transition-colors duration-300">
           <div className="flex justify-between items-center mb-2">
-            <span className="font-bold text-sm text-gold-gradient">
+            <span className="font-bold text-sm text-[#C4A77D]">
               Apunte la cámara al código de barras o QR
             </span>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setScannerActivo(false)}
+              className="text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-zinc-800"
             >
-              <X className="w-10 h-10" />
+              <X className="w-6 h-6" />
             </Button>
           </div>
           <div id="reader" className="w-full max-w-md mx-auto"></div>
         </div>
       )}
 
-      {/* BUSCADOR DE SOCIOS Y BOTÓN NUEVO SOCIO */}
+      {/* BUSCADOR DE SOCIOS Y BOTÓN NUEVO/IMPORTAR */}
       <div className="space-y-2">
-        <div className="flex justify-between items-end">
-          <Label className="text-sm pb-1">Elegir Socio</Label>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-2 pb-1">
+          <Label className="text-sm text-gray-700 dark:text-zinc-300">
+            Elegir Socio
+          </Label>
           {usuario.includes("admin") && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setModalNuevoSocio(true)}
-              className="flex items-center gap-2 h-8 bg-[#C4A77D] hover:bg-[#C4A77D]/80"
-            >
-              <UserPlus className="w-3 h-3" />
-              Nuevo Socio
-            </Button>
+            <div className="flex gap-2 w-full sm:w-auto">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setModalImportar(true)}
+                className="flex items-center gap-2 h-8 bg-white border-gray-300 text-gray-700 hover:bg-gray-100 dark:bg-zinc-900 dark:border-white/10 dark:hover:bg-zinc-800 dark:text-white w-full sm:w-auto transition-colors"
+              >
+                <Upload className="w-3 h-3" />
+                Cargar CSV
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setModalNuevoSocio(true)}
+                className="flex items-center gap-2 h-8 bg-[#C4A77D] hover:bg-[#C4A77D]/90 text-white dark:text-black font-bold border-none w-full sm:w-auto bg-gradient-to-br from-[#E2C792] via-[#C4A77D] to-[#8A7350] dark:border dark:border-[#E2C792]/40"
+              >
+                <UserPlus className="w-3 h-3" />
+                Nuevo Socio
+              </Button>
+            </div>
           )}
         </div>
         <Popover open={open} onOpenChange={setOpen}>
@@ -405,7 +569,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
               variant="outline"
               role="combobox"
               aria-expanded={open}
-              className="w-full justify-between bg-card text-gray-300"
+              className="w-full justify-between bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white transition-colors dark:shadow-inner"
             >
               {data.socioDni
                 ? `${data.socioNombreApellido} (DNI: ${data.socioDni})`
@@ -413,19 +577,24 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-full p-0">
-            <Command shouldFilter={false}>
+          <PopoverContent className="w-full p-0 bg-white border-gray-200 text-gray-900 dark:bg-zinc-900 dark:border-white/10 dark:text-white shadow-xl">
+            <Command shouldFilter={false} className="bg-transparent">
               <CommandInput
                 placeholder="Escriba nombre o DNI..."
                 value={busqueda}
                 onValueChange={setBusqueda}
+                className="text-gray-900 dark:text-white"
               />
               <CommandList>
                 {socios.length === 0 && (
-                  <CommandEmpty>Cargando socios...</CommandEmpty>
+                  <CommandEmpty className="text-gray-500 dark:text-zinc-400 py-4 text-center">
+                    Cargando socios...
+                  </CommandEmpty>
                 )}
                 {socios.length > 0 && sociosFiltrados.length === 0 && (
-                  <CommandEmpty>No se encontró el socio.</CommandEmpty>
+                  <CommandEmpty className="text-gray-500 dark:text-zinc-400 py-4 text-center">
+                    No se encontró el socio.
+                  </CommandEmpty>
                 )}
                 <CommandGroup>
                   {sociosFiltrados.map((s) => (
@@ -436,10 +605,11 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
                         handleSeleccionarSocio(String(s.dni));
                         setOpen(false);
                       }}
+                      className="text-gray-900 hover:bg-gray-100 cursor-pointer dark:text-white dark:hover:bg-zinc-800"
                     >
                       <Check
                         className={cn(
-                          "mr-2 h-4 w-4",
+                          "mr-2 h-4 w-4 text-[#C4A77D]",
                           data.socioDni === String(s.dni)
                             ? "opacity-100"
                             : "opacity-0",
@@ -457,112 +627,139 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
 
       {/* DATOS DEL SOCIO SELECCIONADO */}
       <div className="grid grid-cols-1 gap-6 sm:gap-8 w-full h-full">
-        <div className="space-y-4  p-4 sm:p-5 rounded-lg border border-gray-200 bg-card/60">
-          <h3 className="font-bold text-gold-gradient uppercase tracking-wide">
+        <div className="space-y-4 p-4 sm:p-5 rounded-lg border border-gray-200 bg-gray-50 dark:bg-zinc-900/80 dark:backdrop-blur-xl dark:border-white/10 dark:ring-1 dark:ring-white/5 transition-colors duration-300">
+          <h3 className="font-bold text-[#C4A77D] uppercase tracking-wide">
             Datos del Socio
           </h3>
-          <div className="space-y-2">
-            <Label className="font-semibold">Nombre Completo</Label>
-            <Input
-              name="socioNombreApellido"
-              value={data.socioNombreApellido || ""}
-              disabled
-              className="bg-card"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label className="font-semibold">Documento N°</Label>
-            <Input
-              name="socioDni"
-              value={data.socioDni || ""}
-              disabled
-              className="bg-card"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label className="font-semibold">Estado</Label>
-            <Input
-              name="socioBaja"
-              value={data.socioBaja || ""}
-              disabled
-              className={
-                data.socioBaja.includes("Activo")
-                  ? "!bg-green-100 text-green-800 font-bold"
-                  : data.socioBaja.includes("baja")
-                    ? "!bg-red-100 text-red-800 font-bold"
-                    : "font-bold"
-              }
-            />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label className="font-semibold text-gray-700 dark:text-zinc-300">
+                Nombre Completo
+              </Label>
+              <Input
+                name="socioNombreApellido"
+                value={data.socioNombreApellido || ""}
+                disabled
+                className="bg-gray-100 border-gray-300 text-gray-900 dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="font-semibold text-gray-700 dark:text-zinc-300">
+                Documento N°
+              </Label>
+              <Input
+                name="socioDni"
+                value={data.socioDni || ""}
+                disabled
+                className="bg-gray-100 border-gray-300 text-gray-900 dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="font-semibold text-gray-700 dark:text-zinc-300">
+                Estado
+              </Label>
+              <Input
+                name="socioBaja"
+                value={data.socioBaja || ""}
+                disabled
+                className={
+                  data.socioBaja.includes("Activo")
+                    ? "bg-green-100 border-green-300 text-green-800 dark:bg-green-950/60 dark:border-green-800/60 dark:text-green-300 font-bold"
+                    : data.socioBaja.includes("baja")
+                      ? "bg-red-100 border-red-300 text-red-800 dark:bg-red-950/60 dark:border-red-800/60 dark:text-red-300 font-bold"
+                      : "bg-gray-100 border-gray-300 text-gray-900 dark:bg-zinc-950/50 dark:border-[#C4A77D] font-bold dark:text-white"
+                }
+              />
+            </div>
           </div>
         </div>
       </div>
+
+      {/* SECCIÓN ADMINISTRADOR */}
       {usuario.includes("admin") && (
         <>
-          <h2 className="text-xl sm:text-2xl font-bold border-b-2 border-gold pb-3">
+          <h2 className="text-xl sm:text-2xl font-bold border-b-2 border-[#C4A77D] pb-3 text-gray-900 dark:text-white mt-8">
             Modificar datos socio seleccionado
           </h2>
           <div className="grid grid-cols-1 gap-6 sm:gap-8 h-full w-full">
-            <div className="space-y-4 bg-card/60 p-4 sm:p-5 rounded-lg border border-gray-200">
-              <h3 className="font-bold text-gold-gradient uppercase tracking-wide">
-                Datos del Socio
+            <div className="space-y-4 p-4 sm:p-5 rounded-lg border border-gray-200 bg-gray-50 dark:bg-zinc-900/80 dark:backdrop-blur-xl dark:border-white/10 dark:ring-1 dark:ring-white/5 transition-colors duration-300">
+              <h3 className="font-bold text-[#C4A77D] uppercase tracking-wide">
+                Edición Manual
               </h3>
-              <div className="space-y-2">
-                <Label className="font-semibold">Nombre Completo</Label>
-                <Input
-                  name="socioNombreApellido"
-                  value={data.socioNombreApellido || ""}
-                  className="bg-card"
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="font-semibold">Documento N°</Label>
-                <Input
-                  name="socioDni"
-                  value={data.socioDni || ""}
-                  className="bg-card"
-                  onChange={handleChange}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label className="font-semibold">Estado</Label>
-
-                <Select
-                  value={data.socioBaja || ""}
-                  onValueChange={(val) => handleSelectChange("socioBaja", val)}
-                >
-                  <SelectTrigger
-                    className={
-                      data.socioBaja.includes("Activo")
-                        ? "!bg-green-100 text-green-800 font-bold w-full"
-                        : data.socioBaja.includes("baja")
-                          ? "!bg-red-100 text-red-800 font-bold w-full"
-                          : "font-bold"
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label className="font-semibold text-gray-700 dark:text-zinc-300">
+                    Nombre Completo
+                  </Label>
+                  <Input
+                    name="socioNombreApellido"
+                    value={data.socioNombreApellido || ""}
+                    className="bg-white border-gray-300 text-gray-900 focus-visible:ring-[#C4A77D] dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white dark:shadow-inner"
+                    onChange={handleChange}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-semibold text-gray-700 dark:text-zinc-300">
+                    Documento N°
+                  </Label>
+                  <Input
+                    name="socioDni"
+                    value={data.socioDni || ""}
+                    className="bg-white border-gray-300 text-gray-900 focus-visible:ring-[#C4A77D] dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white dark:shadow-inner"
+                    onChange={handleChange}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-semibold text-gray-700 dark:text-zinc-300">
+                    Estado
+                  </Label>
+                  <Select
+                    value={data.socioBaja || ""}
+                    onValueChange={(val) =>
+                      handleSelectChange("socioBaja", val)
                     }
                   >
-                    <SelectValue placeholder="Seleccione estado" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      <SelectItem value={"Activo"}>Activo</SelectItem>
-                      <SelectItem value={"Dado de baja"}>
-                        Dado de baja
-                      </SelectItem>
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+                    <SelectTrigger
+                      className={
+                        data.socioBaja.includes("Activo")
+                          ? "bg-green-100 border-green-300 text-green-800 dark:bg-green-950/60 dark:border-green-800/60 dark:text-green-300 font-bold w-full"
+                          : data.socioBaja.includes("baja")
+                            ? "bg-red-100 border-red-300 text-red-800 dark:bg-red-950/60 dark:border-red-800/60 dark:text-red-300 font-bold w-full"
+                            : "bg-white border-gray-300 text-gray-900 dark:bg-zinc-950/50 dark:border-[#C4A77D] font-bold dark:text-white w-full dark:shadow-inner"
+                      }
+                    >
+                      <SelectValue placeholder="Seleccione estado" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-gray-200 text-gray-900 dark:bg-zinc-900 dark:border-white/10 dark:text-white">
+                      <SelectGroup>
+                        <SelectItem
+                          value={"Activo"}
+                          className="hover:bg-gray-100 dark:hover:bg-zinc-800 cursor-pointer"
+                        >
+                          Activo
+                        </SelectItem>
+                        <SelectItem
+                          value={"Dado de baja"}
+                          className="hover:bg-gray-100 dark:hover:bg-zinc-800 cursor-pointer"
+                        >
+                          Dado de baja
+                        </SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
-          </div>
-          <div className="pt-6 flex flex-col sm:flex-row justify-end gap-4">
-            <Button
-              disabled={loading}
-              size="lg"
-              onClick={handleEditarSocio}
-              className="bg-black hover:bg-gray-800 text-gold font-bold px-8 py-6 text-lg shadow-lg w-full sm:w-auto transition-all"
-            >
-              {loading ? "Modificando datos..." : "Modificar datos del socio"}
-            </Button>
+            <div className="pt-2 flex flex-col sm:flex-row justify-end gap-4">
+              <Button
+                disabled={loading}
+                size="lg"
+                onClick={handleEditarSocio}
+                className="bg-[#C4A77D] hover:bg-[#C4A77D]/90 text-white dark:text-black font-bold px-8 py-6 text-lg shadow-lg w-full sm:w-auto transition-all bg-gradient-to-br from-[#E2C792] via-[#C4A77D] to-[#8A7350] dark:border dark:border-[#E2C792]/40"
+              >
+                {loading ? "Modificando..." : "Modificar datos del socio"}
+              </Button>
+            </div>
           </div>
         </>
       )}
