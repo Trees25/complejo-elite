@@ -277,7 +277,7 @@ export default function Dashboard({ usuario }: { usuario: String }) {
 
       {/* GRÁFICOS */}
       {!loading && desglose.length > 0 && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
           {/* Gráfico de Barras: Recaudación */}
           <div className="bg-gray-50 p-5 rounded-lg border border-gray-200 text-gray-900 shadow-sm dark:bg-zinc-900/80 dark:backdrop-blur-xl dark:border-white/10 dark:text-white dark:ring-1 dark:ring-white/5">
             <h3 className="font-bold text-[#C4A77D] uppercase tracking-wide mb-4">

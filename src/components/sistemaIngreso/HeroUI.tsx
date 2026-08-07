@@ -90,7 +90,7 @@ export default function HeroUI({ rolInicial }: { rolInicial: string }) {
                 }
                 onClick={() => setActiveTab("tickets")}
               >
-                Imprimir tickets
+                Gestión de accesos
               </Button>
               <Button
                 className={
@@ -111,7 +111,7 @@ export default function HeroUI({ rolInicial }: { rolInicial: string }) {
                 }
                 onClick={() => setActiveTab("cerrar caja")}
               >
-                Cerrar caja
+                Gestión Cajas
               </Button>
             </>
           )}
@@ -127,7 +127,7 @@ export default function HeroUI({ rolInicial }: { rolInicial: string }) {
                 }
                 onClick={() => setActiveTab("crear ticket")}
               >
-                Crear/Editar tickets
+                Administración
               </Button>
             </>
           )}

@@ -4,6 +4,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import {
+  Check,
+  ChevronsUpDown,
+  Camera,
+  X,
+  UserPlus,
+  Upload,
+} from "lucide-react";
 
 import {
   Select,
@@ -33,11 +41,14 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
   const [cargandoTurno, setCargandoTurno] = useState(true);
   const [turnoAbierto, setTurnoAbierto] = useState<{ id: string } | null>(null);
   const [tiposTicket, setTiposTicket] = useState<TipoTicket[]>([]);
+  const [modalMontoInicial, setModalMontoInicial] = useState(false);
+  const [guardandoMonto, setGuardandoMonto] = useState(false);
 
   // Estado para impresión
   const [data, setData] = useState({
     tipo_ticket_id: "",
     cantidad: "10",
+    monto_abrir: "0",
   });
 
   // Estado para sobrantes
@@ -75,7 +86,8 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
   }, [supabase]);
 
   // 2. Función para abrir caja manualmente
-  const handleAbrirCaja = async () => {
+  const handleAbrirCaja = async (e: React.FormEvent) => {
+    e.preventDefault();
     setLoading(true);
     try {
       const {
@@ -83,11 +95,20 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
       } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuario no autenticado");
 
+      if (Number(data.monto_abrir) < 0) {
+        toast.error("ERROR AL ABRIR LA CAJA", {
+          description: `MONTO DE APERTURA INVÁLIDO`,
+        });
+        setLoading(false);
+        return;
+      }
+
       const { data: nuevoTurno, error } = await supabase
         .from("turnos_caja")
         .insert({
           usuario_id: user.id,
           estado: "ABIERTA",
+          efectivo_abrir: data.monto_abrir,
         })
         .select("id")
         .single();
@@ -335,13 +356,33 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
           No tienes un turno de caja abierto actualmente. Debes abrir la caja
           para comenzar a generar e imprimir tickets.
         </p>
-        <Button
-          onClick={handleAbrirCaja}
-          disabled={loading}
-          className="w-full bg-[#C4A77D] hover:bg-[#C4A77D]/90 text-white dark:text-black font-bold py-3 text-lg transition-all bg-gradient-to-br from-[#E2C792] via-[#C4A77D] to-[#8A7350] dark:border dark:border-[#E2C792]/40 shadow-lg"
-        >
-          {loading ? "Abriendo caja..." : "Abrir Caja"}
-        </Button>
+        <h2 className="text-xl font-bold mb-4 border-b border-[#C4A77D] pb-2 text-gray-900 dark:text-white">
+          Registrar Efectivo Inicial en la caja
+        </h2>
+        <form onSubmit={handleAbrirCaja} className="space-y-4">
+          <div className="space-y-2">
+            <Label className="text-gray-700 dark:text-zinc-300">
+              Monto Inicial
+            </Label>
+            <Input
+              type="number"
+              placeholder="Ej: 10000"
+              value={data.monto_abrir}
+              onChange={(e) =>
+                setData({ ...data, monto_abrir: e.target.value })
+              }
+              required
+              className="bg-white border-gray-300 text-gray-900 focus-visible:ring-[#C4A77D] dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white dark:shadow-inner"
+            />
+          </div>
+          <Button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-[#C4A77D] hover:bg-[#C4A77D]/90 text-white dark:text-black font-bold py-3 text-lg transition-all bg-gradient-to-br from-[#E2C792] via-[#C4A77D] to-[#8A7350] dark:border dark:border-[#E2C792]/40 shadow-lg"
+          >
+            {loading ? "Abriendo caja..." : "Abrir Caja"}
+          </Button>
+        </form>
       </div>
     );
   }

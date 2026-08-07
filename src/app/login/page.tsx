@@ -134,7 +134,7 @@ export default function LoginPage() {
         <button
           type="submit"
           disabled={loading}
-          className="bg-black hover:bg-gray-800 text-gold font-bold px-4 py-4 text-lg shadow-lg w-full sm:w-auto transition-all rounded flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed "
+          className="w-full py-2.5 px-4 rounded-lg font-bold flex items-center justify-center gap-2 text-white dark:text-black bg-[#C4A77D] hover:bg-[#C4A77D]/90 bg-gradient-to-br from-[#E2C792] via-[#C4A77D] to-[#8A7350] shadow-lg transition-all disabled:opacity-50"
         >
           {loading && (
             <svg className="animate-spin h-5 w-5 text-gold" viewBox="0 0 24 24">

@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
-
+import FormCrearUsuario from "./CrearUsuario";
 import {
   Select,
   SelectContent,
@@ -369,6 +369,11 @@ export default function CrearTicket({ usuario }: { usuario: String }) {
           {loading ? "Cambiando estado..." : "Editar estado"}
         </Button>
       </div>
+      <h2 className="text-xl sm:text-2xl font-bold border-b-2 border-[#C4A77D] pb-3 text-gray-900 dark:text-white mt-8">
+        Crear nuevo usuario en el sistema
+      </h2>
+
+      <FormCrearUsuario />
     </div>
   );
 }
