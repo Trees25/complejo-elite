@@ -29,10 +29,10 @@ export default function HeroUI({ rolInicial }: { rolInicial: string }) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 text-gray-900 dark:bg-black dark:text-white p-4 sm:p-8 transition-colors duration-300">
+    <div className="min-h-screen bg-gray-100 text-gray-900 dark:bg-black dark:text-white p-4 sm:p-8 transition-colors duration-600">
       <div className="max-w-6xl mx-auto space-y-6 sm:space-y-8">
         {/* HEADER */}
-        <header className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-4 sm:gap-6 border-b-4 border-[#C4A77D] pb-6 bg-white dark:bg-card/50 p-4 sm:p-6 rounded-lg shadow-sm transition-colors duration-300">
+        <header className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-4 sm:gap-6 border-b-4 border-[#C4A77D] pb-6 bg-white dark:bg-card/50 p-4 sm:p-6 rounded-lg shadow-sm transition-colors duration-600">
           <div className="flex flex-col sm:flex-row items-center sm:items-start text-center sm:text-left gap-4 sm:gap-6">
             <Image
               src={logoMutual}
@@ -72,7 +72,7 @@ export default function HeroUI({ rolInicial }: { rolInicial: string }) {
               className={
                 activeTab === "Dashboard"
                   ? "bg-[#C4A77D] px-4 py-4 border-2 border-[#C4A77D] text-white font-bold shadow-md w-full text-base sm:w-auto"
-                  : "bg-white dark:bg-[#C4A77D]/80 px-4 py-4 text-base text-gray-700 dark:text-black border-2 border-gray-300 hover:border-black hover:text-black hover:bg-[#C4A77D] hover:shadow-xl w-full sm:w-auto transition-all"
+                  : "bg-white dark:bg-[#C4A77D]/80 px-4 py-4 text-base text-gray-700 dark:text-black border-2 border-gray-300 hover:border-black hover:text-black hover:bg-[#C4A77D] hover:shadow-xl w-full sm:w-auto transition-all duration-600"
               }
               onClick={() => setActiveTab("Dashboard")}
             >
@@ -86,7 +86,7 @@ export default function HeroUI({ rolInicial }: { rolInicial: string }) {
                 className={
                   activeTab === "tickets"
                     ? "bg-[#C4A77D] px-4 py-4 border-2 border-[#C4A77D] text-white font-bold shadow-md w-full text-base sm:w-auto"
-                    : "bg-white dark:bg-[#C4A77D]/80 px-4 py-4 text-base text-gray-700 dark:text-black border-2 border-gray-300 hover:border-black hover:text-black hover:bg-[#C4A77D] hover:shadow-xl w-full sm:w-auto transition-all"
+                    : "bg-white dark:bg-[#C4A77D]/80 px-4 py-4 text-base text-gray-700 dark:text-black border-2 border-gray-300 hover:border-black hover:text-black hover:bg-[#C4A77D] hover:shadow-xl w-full sm:w-auto transition-all duration-600"
                 }
                 onClick={() => setActiveTab("tickets")}
               >
@@ -96,7 +96,7 @@ export default function HeroUI({ rolInicial }: { rolInicial: string }) {
                 className={
                   activeTab === "buscar socio"
                     ? "bg-[#C4A77D] px-4 py-4 border-2 border-[#C4A77D] text-white font-bold shadow-md w-full text-base sm:w-auto"
-                    : "bg-white dark:bg-[#C4A77D]/80 px-4 py-4 text-base text-gray-700 dark:text-black border-2 border-gray-300 hover:border-black hover:text-black hover:bg-[#C4A77D] hover:shadow-xl w-full sm:w-auto transition-all"
+                    : "bg-white dark:bg-[#C4A77D]/80 px-4 py-4 text-base text-gray-700 dark:text-black border-2 border-gray-300 hover:border-black hover:text-black hover:bg-[#C4A77D] hover:shadow-xl w-full sm:w-auto transition-all duration-600"
                 }
                 onClick={() => setActiveTab("buscar socio")}
               >
@@ -107,7 +107,7 @@ export default function HeroUI({ rolInicial }: { rolInicial: string }) {
                 className={
                   activeTab === "cerrar caja"
                     ? "bg-[#C4A77D] px-4 py-4 border-2 border-[#C4A77D] text-white font-bold shadow-md w-full text-base sm:w-auto"
-                    : "bg-white dark:bg-[#C4A77D]/80 px-4 py-4 text-base text-gray-700 dark:text-black border-2 border-gray-300 hover:border-black hover:text-black hover:bg-[#C4A77D] hover:shadow-xl w-full sm:w-auto transition-all"
+                    : "bg-white dark:bg-[#C4A77D]/80 px-4 py-4 text-base text-gray-700 dark:text-black border-2 border-gray-300 hover:border-black hover:text-black hover:bg-[#C4A77D] hover:shadow-xl w-full sm:w-auto transition-all duration-600"
                 }
                 onClick={() => setActiveTab("cerrar caja")}
               >
@@ -123,7 +123,7 @@ export default function HeroUI({ rolInicial }: { rolInicial: string }) {
                 className={
                   activeTab === "crear ticket"
                     ? "bg-[#C4A77D] px-4 py-4 border-2 border-[#C4A77D] text-white font-bold shadow-md w-full text-base sm:w-auto"
-                    : "bg-white dark:bg-[#C4A77D]/80 px-4 py-4 text-base text-gray-700 dark:text-black border-2 border-gray-300 hover:border-black hover:text-black hover:bg-[#C4A77D] hover:shadow-xl w-full sm:w-auto transition-all"
+                    : "bg-white dark:bg-[#C4A77D]/80 px-4 py-4 text-base text-gray-700 dark:text-black border-2 border-gray-300 hover:border-black hover:text-black hover:bg-[#C4A77D] hover:shadow-xl w-full sm:w-auto transition-all duration-600"
                 }
                 onClick={() => setActiveTab("crear ticket")}
               >

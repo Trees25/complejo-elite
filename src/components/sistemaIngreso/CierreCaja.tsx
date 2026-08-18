@@ -282,7 +282,7 @@ export default function CierreCaja({ usuario }: { usuario: string }) {
         <Button
           onClick={consultarCajaHoy}
           disabled={loading || guardando}
-          className="bg-[#C4A77D] hover:bg-[#C4A77D]/90 text-white dark:text-black font-bold mt-4 sm:mt-0 bg-gradient-to-br from-[#E2C792] via-[#C4A77D] to-[#8A7350] dark:border dark:border-[#E2C792]/40 shadow-lg"
+          className="bg-[#C4A77D] hover:bg-[#C4A77D]/90 text-white hover:text-black transition-all duration-300 dark:hover:text-white dark:text-black font-bold mt-4 sm:mt-0 bg-gradient-to-br from-[#E2C792] via-[#C4A77D] to-[#8A7350] dark:border dark:border-[#E2C792]/40 shadow-lg"
         >
           {loading ? "Calculando..." : "Consultar Totales de Hoy"}
         </Button>

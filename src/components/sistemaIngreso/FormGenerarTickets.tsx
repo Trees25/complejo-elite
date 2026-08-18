@@ -457,7 +457,7 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
               disabled={loading || !data.tipo_ticket_id}
               size="lg"
               onClick={handleGenerarLote}
-              className="bg-[#C4A77D] hover:bg-[#C4A77D]/90 text-white dark:text-black font-bold px-8 py-6 text-lg shadow-lg w-full sm:w-auto transition-all bg-gradient-to-br from-[#E2C792] via-[#C4A77D] to-[#8A7350] dark:border dark:border-[#E2C792]/40"
+              className="bg-[#C4A77D] hover:bg-[#C4A77D]/90 text-white hover:text-black transition-all duration-300 dark:hover:text-white dark:text-black font-bold px-8 py-6 text-lg shadow-lg w-full sm:w-auto transition-all bg-gradient-to-br from-[#E2C792] via-[#C4A77D] to-[#8A7350] dark:border dark:border-[#E2C792]/40"
             >
               {loading ? "Generando e Imprimiendo..." : "Imprimir Lote"}
             </Button>
@@ -529,9 +529,9 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
               disabled={loadingSobrantes || !sobranteData.tipo_ticket_id}
               size="lg"
               onClick={handleDeclararSobrantes}
-              className="bg-[#C4A77D] hover:bg-red-600 hover:text-white text-white dark:text-black dark:hover:bg-red-500 dark:hover:text-white font-bold px-8 py-6 text-lg shadow-lg w-full sm:w-auto transition-all"
+              className="bg-[#C4A77D] hover:bg-red-600 hover:text-white text-white hover:text-black transition-all duration-300 dark:hover:text-white dark:text-black dark:hover:bg-red-500 dark:hover:text-white font-bold px-8 py-6 text-lg shadow-lg w-full sm:w-auto transition-all"
             >
-              {loadingSobrantes ? "Procesando..." : "Marcar como Sobrantes"}
+              {loadingSobrantes ? "Procesando..." : "Marcar como sobrantes"}
             </Button>
           </div>
         </div>

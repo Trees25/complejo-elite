@@ -39,6 +39,7 @@ export default function Dashboard({ usuario }: { usuario: String }) {
   const [recaudacionTotal, setRecaudacionTotal] = useState(0);
   const [desglose, setDesglose] = useState<ResumenTicket[]>([]);
   const [tiposDisponibles, setTiposDisponibles] = useState<TipoTicket[]>([]);
+  const [sobrantes, setSobrantes] = useState(0);
 
   const hoy = new Date().toISOString().split("T")[0];
   const primerDiaMes = new Date(
@@ -102,8 +103,30 @@ export default function Dashboard({ usuario }: { usuario: String }) {
   const cargarMetricas = async () => {
     setLoading(true);
     try {
-      const fechaDesde = `${filtros.desde}T00:00:00`;
-      const fechaHasta = `${filtros.hasta}T23:59:59`;
+      // Agregamos la hora inicial (00:00:00) y el huso horario de Argentina (-03:00)
+      // .toISOString() lo convierte automáticamente a '2026-08-13T03:00:00.000Z' (UTC)
+      const fechaDesde = new Date(
+        `${filtros.desde}T00:00:00.000-03:00`,
+      ).toISOString();
+
+      // Agregamos la hora final (23:59:59) y el huso horario de Argentina (-03:00)
+      // .toISOString() lo convierte automáticamente a '2026-08-14T02:59:59.000Z' (UTC)
+      const fechaHasta = new Date(
+        `${filtros.hasta}T23:59:59.999-03:00`,
+      ).toISOString();
+
+      const { count: sobrantes, error } = await supabase
+        .from("tickets")
+        .select("*", { count: "exact", head: true })
+        .gte("created_at", fechaDesde)
+        .lte("created_at", fechaHasta)
+        .eq("estado", "SOBRANTE");
+
+      if (error) throw error;
+      console.log(sobrantes);
+      if (sobrantes) {
+        setSobrantes(Number(sobrantes || 0));
+      }
 
       let query = supabase
         .from("tickets")
@@ -244,7 +267,7 @@ export default function Dashboard({ usuario }: { usuario: String }) {
           <Button
             onClick={cargarMetricas}
             disabled={loading}
-            className="bg-[#C4A77D] hover:bg-[#C4A77D]/90 text-white dark:text-black font-bold h-10 shadow-lg w-full transition-all bg-gradient-to-br from-[#E2C792] via-[#C4A77D] to-[#8A7350] dark:border dark:border-[#E2C792]/40"
+            className="bg-[#C4A77D] hover:bg-[#C4A77D]/90 text-white hover:text-black transition-all duration-300 dark:hover:text-white dark:text-black font-bold h-10 shadow-lg w-full transition-all bg-gradient-to-br from-[#E2C792] via-[#C4A77D] to-[#8A7350] dark:border dark:border-[#E2C792]/40"
           >
             {loading ? "Filtrando..." : "Aplicar Filtro"}
           </Button>
@@ -368,7 +391,7 @@ export default function Dashboard({ usuario }: { usuario: String }) {
           <p className="text-sm text-gray-500 py-4 text-center">
             Actualizando métricas...
           </p>
-        ) : desglose.length === 0 ? (
+        ) : desglose.length === 0 && sobrantes === 0 ? (
           <p className="text-sm py-4 text-gray-600 dark:text-zinc-400">
             No hay registros de tickets en este rango y filtros.
           </p>
@@ -394,6 +417,19 @@ export default function Dashboard({ usuario }: { usuario: String }) {
                 </div>
               </div>
             ))}
+            <div className="bg-white p-4 rounded-md border border-gray-200 shadow-sm space-y-2 text-gray-900 dark:bg-zinc-950/60 dark:border-white/10 dark:text-white dark:shadow-lg">
+              <h4 className="font-bold text-base">Sobrantes</h4>
+              <div className="flex justify-between text-sm text-gray-600 dark:text-zinc-400">
+                <span>Cantidad:</span>
+                <span className="font-semibold text-[#C4A77D]">
+                  {sobrantes}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm text-gray-600 dark:text-zinc-400 pt-1 border-t border-gray-200 dark:border-white/10">
+                <span>Recaudación:</span>
+                <span className="font-bold text-[#C4A77D]">0</span>
+              </div>
+            </div>
           </div>
         )}
       </div>

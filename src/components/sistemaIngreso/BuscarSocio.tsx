@@ -12,6 +12,7 @@ import {
   X,
   UserPlus,
   Upload,
+  UserCog,
 } from "lucide-react";
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { toast } from "sonner";
@@ -58,6 +59,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
   // Estados para el modal de socio nuevo
   const [modalNuevoSocio, setModalNuevoSocio] = useState(false);
   const [guardandoSocio, setGuardandoSocio] = useState(false);
+  const [modalModificarDatos, setModalModificarDatos] = useState(false);
   const [nuevoSocio, setNuevoSocio] = useState({
     dni: "",
     nombre_completo: "",
@@ -337,6 +339,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
 
   const handleEditarSocio = async (e: React.FormEvent) => {
     e.preventDefault();
+    setGuardandoSocio(true);
     const estadoSocio = data.socioBaja.includes("Activo") ? true : false;
     try {
       const { data: socioEditado, error } = await supabase
@@ -354,6 +357,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
       toast.success("SOCIO MODIFICADO", {
         description: `LOS DATOS DEL SOCIO ${data.socioNombreApellido} FUERON MODIFICADOS CORRECTAMENTE`,
       });
+
       fetchSocios(); // Refrescar estado local
     } catch (error: any) {
       toast.error("SOCIO NO MODIFICADO", {
@@ -418,7 +422,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
                   type="button"
                   variant="outline"
                   onClick={() => setModalNuevoSocio(false)}
-                  className="border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  className="border-gray-300 text-white hover:bg-gray-100 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-zinc-800"
                 >
                   Cancelar
                 </Button>
@@ -428,6 +432,104 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
                   className="bg-[#C4A77D] hover:bg-[#C4A77D]/90 text-white dark:text-black font-bold bg-gradient-to-br from-[#E2C792] via-[#C4A77D] to-[#8A7350]"
                 >
                   {guardandoSocio ? "Guardando..." : "Guardar Socio"}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL editar socio(Individual) */}
+      {modalModificarDatos && usuario?.includes("admin") && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 dark:bg-card/50 p-4 w-full h-full backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md relative border border-gray-200 dark:bg-zinc-900 dark:border-white/10">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-4 top-4 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-zinc-800"
+              onClick={() => setModalModificarDatos(false)}
+            >
+              <X className="w-5 h-5" />
+            </Button>
+            <h2 className="text-xl font-bold mb-4 border-b border-[#C4A77D] pb-2 text-gray-900 dark:text-white">
+              Modificar datos socio seleccionado
+            </h2>
+            <form onSubmit={handleEditarSocio} className="space-y-4">
+              <div className="space-y-2">
+                <Label className="font-semibold text-gray-700 dark:text-zinc-300">
+                  Nombre Completo
+                </Label>
+                <Input
+                  name="socioNombreApellido"
+                  value={data.socioNombreApellido || ""}
+                  className="bg-white border-gray-300 text-gray-900 focus-visible:ring-[#C4A77D] dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white dark:shadow-inner"
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="font-semibold text-gray-700 dark:text-zinc-300">
+                  Documento N°
+                </Label>
+                <Input
+                  name="socioDni"
+                  value={data.socioDni || ""}
+                  className="bg-white border-gray-300 text-gray-900 focus-visible:ring-[#C4A77D] dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white dark:shadow-inner"
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="font-semibold text-gray-700 dark:text-zinc-300">
+                  Estado
+                </Label>
+                <Select
+                  value={data.socioBaja || ""}
+                  onValueChange={(val) => handleSelectChange("socioBaja", val)}
+                >
+                  <SelectTrigger
+                    className={
+                      data.socioBaja.includes("Activo")
+                        ? "bg-green-100 border-green-300 text-green-800 dark:bg-green-950/60 dark:border-green-800/60 dark:text-green-300 font-bold w-full"
+                        : data.socioBaja.includes("baja")
+                          ? "bg-red-100 border-red-300 text-red-800 dark:bg-red-950/60 dark:border-red-800/60 dark:text-red-300 font-bold w-full"
+                          : "bg-white border-gray-300 text-gray-900 dark:bg-zinc-950/50 dark:border-[#C4A77D] font-bold dark:text-white w-full dark:shadow-inner"
+                    }
+                  >
+                    <SelectValue placeholder="Seleccione estado" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white border-gray-200 text-gray-900 dark:bg-zinc-900 dark:border-white/10 dark:text-white">
+                    <SelectGroup>
+                      <SelectItem
+                        value={"Activo"}
+                        className="hover:bg-gray-100 dark:hover:bg-zinc-800 cursor-pointer"
+                      >
+                        Activo
+                      </SelectItem>
+                      <SelectItem
+                        value={"Dado de baja"}
+                        className="hover:bg-gray-100 dark:hover:bg-zinc-800 cursor-pointer"
+                      >
+                        Dado de baja
+                      </SelectItem>
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="pt-4 flex justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setModalModificarDatos(false)}
+                  className="border-gray-300 text-white hover:bg-gray-100 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={guardandoSocio}
+                  className="bg-[#C4A77D] hover:bg-[#C4A77D]/90 text-white dark:text-black font-bold bg-gradient-to-br from-[#E2C792] via-[#C4A77D] to-[#8A7350]"
+                >
+                  {guardandoSocio ? "Modificando..." : "Modificar Socio"}
                 </Button>
               </div>
             </form>
@@ -481,7 +583,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
                     setModalImportar(false);
                     setFileCsv(null);
                   }}
-                  className="border-gray-300 text-gray-700 hover:bg-gray-100 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  className="border-gray-300 text-white hover:bg-gray-100 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-zinc-800"
                 >
                   Cancelar
                 </Button>
@@ -505,7 +607,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
         <Button
           type="button"
           onClick={() => setScannerActivo(!scannerActivo)}
-          className="bg-[#C4A77D] hover:bg-[#C4A77D]/90 text-white dark:text-black font-bold flex items-center gap-2 bg-gradient-to-br from-[#E2C792] via-[#C4A77D] to-[#8A7350] dark:border dark:border-[#E2C792]/40 shadow-lg"
+          className="bg-[#C4A77D] hover:bg-[#C4A77D]/90 text-white hover:text-black transition-all duration-300 dark:text-black font-bold flex items-center gap-2 bg-gradient-to-br from-[#E2C792] via-[#C4A77D] to-[#8A7350] dark:border dark:border-[#E2C792]/40 shadow-lg"
         >
           <Camera className="w-4 h-4" />
           {scannerActivo ? "Cerrar Escáner" : "Escanear DNI"}
@@ -534,18 +636,18 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
 
       {/* BUSCADOR DE SOCIOS Y BOTÓN NUEVO/IMPORTAR */}
       <div className="space-y-2">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-2 pb-1">
+        <div className="flex flex-col md:flex-row justify-between items-start sm:items-end gap-2 pb-1">
           <Label className="text-sm text-gray-700 dark:text-zinc-300">
             Elegir Socio
           </Label>
           {usuario.includes("admin") && (
-            <div className="flex gap-2 w-full sm:w-auto">
+            <div className="flex flex-col md:flex-row gap-2 w-full sm:w-auto">
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => setModalImportar(true)}
-                className="flex items-center gap-2 h-8 bg-white border-gray-300 text-gray-700 hover:bg-gray-100 dark:bg-zinc-900 dark:border-white/10 dark:hover:bg-zinc-800 dark:text-white w-full sm:w-auto transition-colors"
+                className="flex items-center gap-2 h-8 bg-white border-gray-300 text-gray-700 hover:bg-gray-100 hover:text-black transition-all duration-300 dark:bg-zinc-900 dark:border-white/10 dark:hover:bg-zinc-800 dark:text-white w-full sm:w-auto transition-colors"
               >
                 <Upload className="w-3 h-3" />
                 Cargar CSV
@@ -555,10 +657,20 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
                 variant="outline"
                 size="sm"
                 onClick={() => setModalNuevoSocio(true)}
-                className="flex items-center gap-2 h-8 bg-[#C4A77D] hover:bg-[#C4A77D]/90 text-white dark:text-black font-bold border-none w-full sm:w-auto bg-gradient-to-br from-[#E2C792] via-[#C4A77D] to-[#8A7350] dark:border dark:border-[#E2C792]/40"
+                className="flex items-center gap-2 h-8 bg-[#C4A77D] hover:bg-[#C4A77D]/90 text-white hover:text-black transition-all duration-300 dark:text-black font-bold border-none w-full sm:w-auto bg-gradient-to-br from-[#E2C792] via-[#C4A77D] to-[#8A7350] dark:border dark:border-[#E2C792]/40"
               >
                 <UserPlus className="w-3 h-3" />
                 Nuevo Socio
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setModalModificarDatos(true)}
+                className="flex items-center gap-2 h-8 bg-white border-gray-300 text-gray-700 hover:bg-gray-100 hover:text-black transition-all duration-300 dark:bg-zinc-900 dark:border-white/10 dark:hover:bg-zinc-800 dark:text-white w-full sm:w-auto transition-colors "
+              >
+                <UserCog className="w-3 h-3" />
+                Modificar datos
               </Button>
             </div>
           )}
@@ -640,7 +752,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
                 name="socioNombreApellido"
                 value={data.socioNombreApellido || ""}
                 disabled
-                className="bg-gray-100 border-gray-300 text-gray-900 dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white"
+                className="disabled:bg-white disabled:opacity-70 bg-gray-100 border-gray-300 text-gray-900 dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white"
               />
             </div>
             <div className="space-y-2">
@@ -651,7 +763,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
                 name="socioDni"
                 value={data.socioDni || ""}
                 disabled
-                className="bg-gray-100 border-gray-300 text-gray-900 dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white"
+                className="disabled:bg-white disabled:opacity-70 bg-gray-100 border-gray-300 text-gray-900 dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white"
               />
             </div>
             <div className="space-y-2">
@@ -664,10 +776,10 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
                 disabled
                 className={
                   data.socioBaja.includes("Activo")
-                    ? "bg-green-100 border-green-300 text-green-800 dark:bg-green-950/60 dark:border-green-800/60 dark:text-green-300 font-bold"
+                    ? "disabled:bg-green-100 disabled:opacity-70 bg-green-100 border-green-300 text-green-800 dark:bg-green-950/60 dark:border-green-800/60 dark:text-green-300 font-bold"
                     : data.socioBaja.includes("baja")
-                      ? "bg-red-100 border-red-300 text-red-800 dark:bg-red-950/60 dark:border-red-800/60 dark:text-red-300 font-bold"
-                      : "bg-gray-100 border-gray-300 text-gray-900 dark:bg-zinc-950/50 dark:border-[#C4A77D] font-bold dark:text-white"
+                      ? "disabled:bg-red-100 disabled:opacity-70 bg-red-100 border-red-300 text-red-800 dark:bg-red-950/60 dark:border-red-800/60 dark:text-red-300 font-bold"
+                      : "disabled:bg-white disabled:opacity-70 bg-gray-100 border-gray-300 text-gray-900 dark:bg-zinc-950/50 dark:border-[#C4A77D] font-bold dark:text-white"
                 }
               />
             </div>
@@ -675,7 +787,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
         </div>
       </div>
 
-      {/* SECCIÓN ADMINISTRADOR */}
+      {/* SECCIÓN ADMINISTRADOR 
       {usuario.includes("admin") && (
         <>
           <h2 className="text-xl sm:text-2xl font-bold border-b-2 border-[#C4A77D] pb-3 text-gray-900 dark:text-white mt-8">
@@ -762,7 +874,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
             </div>
           </div>
         </>
-      )}
+      )}*/}
     </div>
   );
 }
