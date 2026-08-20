@@ -47,7 +47,7 @@ export default function Instalaciones() {
     const msg = encodeURIComponent(
       `Hola Elite Club, soy ${form.nombre}. Me interesa un evento ${form.tipo}.\n${form.mensaje}\nTel: ${form.telefono}\nEmail: ${form.email}`,
     );
-    window.open(`https://wa.me/2644590545?text=${msg}`, "_blank");
+    window.open(`https://wa.me/2646167817?text=${msg}`, "_blank");
     setSent(true);
   };
 

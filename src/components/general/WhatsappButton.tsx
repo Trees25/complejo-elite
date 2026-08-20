@@ -7,9 +7,9 @@ export default function WhatsAppButton() {
   const [isOpen, setIsOpen] = useState(false);
 
   // Configura aquí tu número y el mensaje inicial
-  const phoneNumber = "542644590545";
+  const phoneNumber = "542646167817";
   const defaultMessage = encodeURIComponent(
-    "¡Hola! Quisiera hacer una consulta.",
+    "¡Hola ELITE!. Quisiera hacer una consulta.",
   );
   const whatsappUrl = `https://wa.me/${phoneNumber}?text=${defaultMessage}`;
 

@@ -12,7 +12,7 @@ import EditarPrecios from "@/components/sistemaIngreso/EditarPrecios";
 import FormGenerarTickets from "@/components/sistemaIngreso/FormGenerarTickets";
 import CrearTicket from "@/components/sistemaIngreso/CrearTicket";
 import ThemeToggle from "@/components/ThemeToggle"; // Verifica que la ruta de importación sea correcta
-
+import DashboardSupervisor from "./DashboardSupervisor";
 // Recibimos el rol como parámetro desde el servidor
 export default function HeroUI({ rolInicial }: { rolInicial: string }) {
   const [activeTab, setActiveTab] = useState("");
@@ -131,6 +131,21 @@ export default function HeroUI({ rolInicial }: { rolInicial: string }) {
               </Button>
             </>
           )}
+          {(rolInicial.includes("admin") ||
+            rolInicial.includes("supervisor")) && (
+            <>
+              <Button
+                className={
+                  activeTab === "supervision"
+                    ? "bg-[#C4A77D] px-4 py-4 border-2 border-[#C4A77D] text-white font-bold shadow-md w-full text-base sm:w-auto"
+                    : "bg-white dark:bg-[#C4A77D]/80 px-4 py-4 text-base text-gray-700 dark:text-black border-2 border-gray-300 hover:border-black hover:text-black hover:bg-[#C4A77D] hover:shadow-xl w-full sm:w-auto transition-all duration-600"
+                }
+                onClick={() => setActiveTab("supervision")}
+              >
+                Supervisión
+              </Button>
+            </>
+          )}
         </nav>
 
         <main>
@@ -145,6 +160,9 @@ export default function HeroUI({ rolInicial }: { rolInicial: string }) {
             <EditarPrecios usuario={rolInicial} />
           )}
           {activeTab === "crear ticket" && <CrearTicket usuario={rolInicial} />}
+          {activeTab === "supervision" && (
+            <DashboardSupervisor usuario={rolInicial} />
+          )}
         </main>
       </div>
     </div>

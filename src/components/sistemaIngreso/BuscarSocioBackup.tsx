@@ -13,11 +13,9 @@ import {
   UserPlus,
   Upload,
   UserCog,
-  User,
 } from "lucide-react";
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from "html5-qrcode";
 import { toast } from "sonner";
-import imageCompression from "browser-image-compression"; // <-- 1. NUEVO IMPORT
 
 import {
   Select,
@@ -47,7 +45,6 @@ interface Socio {
   dni: string;
   nombre_completo: string;
   estado: boolean;
-  foto_url?: string;
 }
 
 export default function FormIngreso({ usuario }: { usuario: String }) {
@@ -67,10 +64,6 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
     dni: "",
     nombre_completo: "",
   });
-  const [fotoSocio, setFotoSocio] = useState<File | null>(null); // <-- 2. NUEVO ESTADO PARA LA FOTO
-
-  // <-- NUEVO: Estado para almacenar la nueva foto al modificar -->
-  const [nuevaFotoSocio, setNuevaFotoSocio] = useState<File | null>(null);
 
   // Estados para el modal de importación CSV
   const [modalImportar, setModalImportar] = useState(false);
@@ -86,7 +79,6 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
     vehiculosInvitados: "0",
     observaciones: "",
     formaPago: "efectivo",
-    socioFotoUrl: "",
   });
 
   const [ingresantes, setIngresantes] = useState<string[]>([]);
@@ -104,23 +96,11 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
     );
   }
 
-  // <-- NUEVO: Función auxiliar centralizada para guardar logs -->
-  const registrarLog = async (accion: string, descripcion: string) => {
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user) {
-      await supabase
-        .from("logs_auditoria")
-        .insert([{ usuario_id: user.id, accion, descripcion }]);
-    }
-  };
-
   // Cargar socios desde Supabase
   const fetchSocios = async () => {
     const { data: sociosData, error } = await supabase
       .from("socios")
-      .select("id, dni, nombre_completo, estado,foto_url");
+      .select("id, dni, nombre_completo, estado");
 
     if (error) {
       console.error("Error al cargar socios:", error);
@@ -200,7 +180,6 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
         socioDni: socioEncontrado.dni,
         socioBaja: socioEncontrado.estado ? "Activo" : "Dado de baja",
         socioId: socioEncontrado.id,
-        socioFotoUrl: socioEncontrado.foto_url || "",
       }));
       setIngresantes([String(socioEncontrado.dni)]);
     } else {
@@ -216,7 +195,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
     setData({ ...data, [name]: value });
   };
 
-  // <-- 3. LÓGICA MODIFICADA PARA SUBIR LA FOTO AL CREAR EL SOCIO
+  // Función para registrar nuevo socio individual en DB
   const handleCrearSocio = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nuevoSocio.dni || !nuevoSocio.nombre_completo) {
@@ -225,7 +204,6 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
 
     setGuardandoSocio(true);
     try {
-      // Primero creamos el socio para obtener su ID
       const { data: socioCreado, error } = await supabase
         .from("socios")
         .insert([
@@ -240,57 +218,14 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
 
       if (error) throw error;
 
-      // Si el usuario seleccionó una foto, la comprimimos y subimos
-      if (fotoSocio) {
-        const opciones = {
-          maxSizeMB: 0.1, // 100kb máx
-          maxWidthOrHeight: 400,
-          useWebWorker: true,
-          fileType: "image/webp",
-        };
-
-        const archivoComprimido = await imageCompression(fotoSocio, opciones);
-        const rutaArchivo = `${socioCreado.id}/perfil.webp`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("socios") // Bucket socios
-          .upload(rutaArchivo, archivoComprimido, {
-            upsert: true,
-            contentType: "image/webp",
-          });
-
-        if (uploadError) {
-          console.error("Error detallado de subida:", uploadError);
-          toast.error("FOTO NO SUBIDA", {
-            description: `El socio se creó, pero la foto falló: ${uploadError.message}`,
-          });
-          // Obtenemos la URL pública y actualizamos el registro del socio
-        } else {
-          const {
-            data: { publicUrl },
-          } = supabase.storage.from("socios").getPublicUrl(rutaArchivo);
-
-          await supabase
-            .from("socios")
-            .update({ foto_url: publicUrl })
-            .eq("id", socioCreado.id);
-          socioCreado.foto_url = publicUrl;
-        }
-      }
-
       setSocios((prev) => [...prev, socioCreado]);
-      toast.success("SOCIO CREADO", {
-        description: `El socio se creó correctamente `,
-      });
-
+      alert("Socio registrado correctamente.");
       setModalNuevoSocio(false);
       setNuevoSocio({ dni: "", nombre_completo: "" });
-      setFotoSocio(null); // Limpiamos el estado de la foto
       handleSeleccionarSocio(String(socioCreado.dni));
     } catch (error: any) {
-      toast.error("ERROR AL CREAR EL SOCIO", {
-        description: `Hubo un error al crear el socio ${error.message}`,
-      });
+      console.error("Error al crear socio:", error);
+      alert("Hubo un error al registrar el socio.");
     } finally {
       setGuardandoSocio(false);
     }
@@ -373,138 +308,16 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
     reader.readAsText(fileCsv);
   };
 
-  const handleEditarSocio = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setGuardandoSocio(true);
-    const estadoSocio = data.socioBaja.includes("Activo") ? true : false;
-    try {
-      let nuevaUrlFoto = data.socioFotoUrl; // <-- NUEVO: Mantener la actual por defecto
-
-      // <-- NUEVO: LÓGICA PARA REEMPLAZAR LA FOTO -->
-      if (nuevaFotoSocio) {
-        const opciones = {
-          maxSizeMB: 0.1,
-          maxWidthOrHeight: 400,
-          useWebWorker: true,
-          fileType: "image/webp",
-        };
-
-        const archivoComprimido = await imageCompression(
-          nuevaFotoSocio,
-          opciones,
-        );
-        const rutaArchivo = `${data.socioId}/perfil.webp`;
-
-        const { error: uploadError } = await supabase.storage
-          .from("socios")
-          .upload(rutaArchivo, archivoComprimido, {
-            upsert: true, // Esto sobreescribe (borra la anterior y pone la nueva)
-            contentType: "image/webp",
-          });
-
-        if (uploadError) {
-          toast.error("FOTO NO ACTUALIZADA", {
-            description: "Hubo un error al subir la nueva foto.",
-          });
-        } else {
-          const {
-            data: { publicUrl },
-          } = supabase.storage.from("socios").getPublicUrl(rutaArchivo);
-
-          // Agregamos un timestamp para forzar al navegador a limpiar el caché y mostrar la nueva
-          nuevaUrlFoto = `${publicUrl}?t=${new Date().getTime()}`;
-        }
-      }
-
-      const { data: socioEditado, error } = await supabase
-        .from("socios")
-        .update([
-          {
-            dni: data.socioDni,
-            nombre_completo: data.socioNombreApellido.toUpperCase(),
-            estado: estadoSocio,
-            ...(nuevaFotoSocio ? { foto_url: nuevaUrlFoto } : {}), // <-- NUEVO: Solo enviar la foto si se cambió
-          },
-        ])
-        .eq("id", data.socioId);
-
-      if (error) throw error;
-
-      // <-- NUEVO: Actualizar la interfaz instantáneamente -->
-      setData((prev) => ({ ...prev, socioFotoUrl: nuevaUrlFoto }));
-
-      toast.success("SOCIO MODIFICADO", {
-        description: `LOS DATOS DEL SOCIO ${data.socioNombreApellido} FUERON MODIFICADOS CORRECTAMENTE`,
-      });
-
-      setModalModificarDatos(false); // <-- NUEVO: Cerramos el modal
-      setNuevaFotoSocio(null); // <-- NUEVO: Limpiamos el input de la foto
-      fetchSocios(); // Refrescar estado local
-    } catch (error: any) {
-      toast.error("SOCIO NO MODIFICADO", {
-        description: `Ocurrió un error al modificar los datos del socio  ${error.message}`,
-      });
-    } finally {
-      setGuardandoSocio(false);
-    }
-  };
-
   const handleRegistrarIngreso = async () => {
-    if (!data.socioDni || !data.socioId) {
-      return toast.error("ERROR AL REGISTRAR INGRESO", {
-        description: "Debes seleccionar un socio antes de registrar un ingreso",
-      });
+    if (!data.socioDni) {
+      return alert("Debe seleccionar un socio antes de registrar el ingreso.");
     }
 
     setLoading(true);
     try {
-      // 1. Obtenemos la fecha actual estricta en formato YYYY-MM-DD (hora local)
-      const fechaBase = new Date().toLocaleDateString("en-CA");
-
-      // 2. Forzamos el huso horario de Argentina (-03:00) y lo convertimos a UTC
-      const inicioDia = new Date(
-        `${fechaBase}T00:00:00.000-03:00`,
-      ).toISOString();
-      const finDia = new Date(`${fechaBase}T23:59:59.999-03:00`).toISOString();
-
-      // 3. Verificamos si existe un ingreso hoy
-      const { data: ingresosHoy, error: selectError } = await supabase
-        .from("ingresos")
-        .select("id")
-        .eq("socio_id", data.socioId)
-        .gte("created_at", inicioDia)
-        .lte("created_at", finDia);
-
-      if (selectError) throw selectError;
-
-      if (ingresosHoy && ingresosHoy.length > 0) {
-        toast.error("INGRESO RECHAZADO", {
-          description: "Este socio ya ingresó hoy.",
-        });
-        setLoading(false);
-        return; // Detiene la ejecución aquí
-      }
-
-      // 4. Si pasa la validación, insertamos el nuevo registro
-      const { error: insertError } = await supabase
-        .from("ingresos")
-        .insert([{ socio_id: data.socioId }]);
-
-      if (insertError) throw insertError;
-
-      // <-- NUEVO: Guardar log de auditoría del ingreso -->
-      await registrarLog(
-        "REGISTRO_INGRESO",
-        `Registró el ingreso del socio: ${data.socioNombreApellido} (DNI: ${data.socioDni})`,
-      );
-
-      toast.success("INGRESO REGISTRADO", {
-        description: "¡Ingreso registrado correctamente!",
-      });
-
-      // 5. Limpiamos el formulario
+      // Aquí lógica de registro de ingreso
+      alert("¡Ingreso registrado correctamente!");
       setData({
-        socioId: "",
         socioNombreApellido: "",
         socioDni: "",
         socioBaja: "",
@@ -512,17 +325,49 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
         vehiculosInvitados: "0",
         observaciones: "",
         formaPago: "efectivo",
-        socioFotoUrl: "",
+        socioId: "",
       });
       setIngresantes([]);
     } catch (error: any) {
       toast.error("ERROR AL REGISTRAR", {
-        description: `NO SE PUDO REGISTRAR EL INGRESO: ${error.message}`,
+        description: `NO SE PUEDO REGISTRAR EL INGRESO ${error.message}`,
       });
     } finally {
       setLoading(false);
     }
   };
+
+  const handleEditarSocio = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setGuardandoSocio(true);
+    const estadoSocio = data.socioBaja.includes("Activo") ? true : false;
+    try {
+      const { data: socioEditado, error } = await supabase
+        .from("socios")
+        .update([
+          {
+            dni: data.socioDni,
+            nombre_completo: data.socioNombreApellido.toUpperCase(),
+            estado: estadoSocio,
+          },
+        ])
+        .eq("id", data.socioId);
+
+      if (error) throw error;
+      toast.success("SOCIO MODIFICADO", {
+        description: `LOS DATOS DEL SOCIO ${data.socioNombreApellido} FUERON MODIFICADOS CORRECTAMENTE`,
+      });
+
+      fetchSocios(); // Refrescar estado local
+    } catch (error: any) {
+      toast.error("SOCIO NO MODIFICADO", {
+        description: `OCURRIÓ UN ERROR AL MODIFICAR LOS DATOS DEL SOCIO ${error.message}`,
+      });
+    } finally {
+      setGuardandoSocio(false);
+    }
+  };
+
   return (
     <div className="space-y-6 sm:space-y-8 p-4 sm:p-8 bg-white text-gray-900 border border-gray-200 rounded-xl shadow-lg relative dark:bg-zinc-950 dark:text-white dark:border-white/10 dark:shadow-2xl dark:shadow-black/80 transition-colors duration-300">
       {/* MODAL NUEVO SOCIO (Individual) */}
@@ -533,10 +378,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
               variant="ghost"
               size="icon"
               className="absolute right-4 top-4 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-zinc-800"
-              onClick={() => {
-                setModalNuevoSocio(false);
-                setFotoSocio(null); // Limpiar foto al cerrar
-              }}
+              onClick={() => setModalNuevoSocio(false)}
             >
               <X className="w-5 h-5" />
             </Button>
@@ -575,31 +417,11 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
                   className="bg-white border-gray-300 text-gray-900 focus-visible:ring-[#C4A77D] dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white dark:shadow-inner"
                 />
               </div>
-
-              {/* <-- 4. NUEVO CAMPO DE FOTO EN EL FORMULARIO --> */}
-              <div className="space-y-2">
-                <Label className="text-gray-700 dark:text-zinc-300">
-                  Foto de Perfil (Opcional)
-                </Label>
-                <Input
-                  type="file"
-                  accept="image/jpeg, image/png, image/webp"
-                  onChange={(e) => setFotoSocio(e.target.files?.[0] || null)}
-                  className="bg-white border-gray-300 text-gray-900 cursor-pointer dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white dark:shadow-inner"
-                />
-                <p className="text-xs text-gray-500 dark:text-zinc-400">
-                  La imagen se comprimirá automáticamente para ahorrar espacio.
-                </p>
-              </div>
-
               <div className="pt-4 flex justify-end gap-3">
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => {
-                    setModalNuevoSocio(false);
-                    setFotoSocio(null);
-                  }}
+                  onClick={() => setModalNuevoSocio(false)}
                   className="border-gray-300 text-white hover:bg-gray-100 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-zinc-800"
                 >
                   Cancelar
@@ -625,10 +447,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
               variant="ghost"
               size="icon"
               className="absolute right-4 top-4 text-gray-500 hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-zinc-800"
-              onClick={() => {
-                setModalModificarDatos(false);
-                setNuevaFotoSocio(null); // <-- NUEVO: Limpiamos al cerrar con la cruz
-              }}
+              onClick={() => setModalModificarDatos(false)}
             >
               <X className="w-5 h-5" />
             </Button>
@@ -658,26 +477,6 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
                   onChange={handleChange}
                 />
               </div>
-
-              {/* <-- NUEVO: CAMPO DE FOTO EN MODAL MODIFICAR --> */}
-              <div className="space-y-2">
-                <Label className="font-semibold text-gray-700 dark:text-zinc-300">
-                  Actualizar Foto (Opcional)
-                </Label>
-                <Input
-                  type="file"
-                  accept="image/jpeg, image/png, image/webp"
-                  onChange={(e) =>
-                    setNuevaFotoSocio(e.target.files?.[0] || null)
-                  }
-                  className="bg-white border-gray-300 text-gray-900 cursor-pointer dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white dark:shadow-inner"
-                />
-                <p className="text-xs text-gray-500 dark:text-zinc-400">
-                  Si subes una nueva foto, reemplazará a la anterior
-                  automáticamente.
-                </p>
-              </div>
-
               <div className="space-y-2">
                 <Label className="font-semibold text-gray-700 dark:text-zinc-300">
                   Estado
@@ -720,10 +519,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
                 <Button
                   type="button"
                   variant="outline"
-                  onClick={() => {
-                    setModalModificarDatos(false);
-                    setNuevaFotoSocio(null); // <-- NUEVO: Limpiamos al cancelar
-                  }}
+                  onClick={() => setModalModificarDatos(false)}
                   className="border-gray-300 text-white hover:bg-gray-100 dark:border-white/10 dark:text-zinc-300 dark:hover:bg-zinc-800"
                 >
                   Cancelar
@@ -885,7 +681,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
               variant="outline"
               role="combobox"
               aria-expanded={open}
-              className="w-full justify-between bg-white border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-dark dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white transition-colors dark:shadow-inner"
+              className="w-full justify-between bg-white border-gray-300 text-gray-700 hover:bg-gray-50 dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-zinc-300 dark:hover:bg-zinc-900 dark:hover:text-white transition-colors dark:shadow-inner"
             >
               {data.socioDni
                 ? `${data.socioNombreApellido} (DNI: ${data.socioDni})`
@@ -899,7 +695,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
                 placeholder="Escriba nombre o DNI..."
                 value={busqueda}
                 onValueChange={setBusqueda}
-                className="text-gray-900 dark:text-white "
+                className="text-gray-900 dark:text-white"
               />
               <CommandList>
                 {socios.length === 0 && (
@@ -921,7 +717,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
                         handleSeleccionarSocio(String(s.dni));
                         setOpen(false);
                       }}
-                      className="text-gray-900  cursor-pointer dark:text-white dark:hover:bg-zinc-800"
+                      className="text-gray-900 hover:bg-gray-100 cursor-pointer dark:text-white dark:hover:bg-zinc-800"
                     >
                       <Check
                         className={cn(
@@ -941,71 +737,144 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
         </Popover>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-6 items-center sm:items-start">
-        {/* CONTENEDOR DE LA FOTO */}
-        <div className="w-50 h-50   shrink-0 rounded-full overflow-hidden bg-gray-200 dark:bg-zinc-950/50 border-2 border-[#C4A77D] flex items-center justify-center shadow-inner">
-          {data.socioFotoUrl ? (
-            <img
-              src={data.socioFotoUrl}
-              alt="Foto del socio"
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <User className="w-12 h-12 text-gray-400 dark:text-zinc-600" />
-          )}
-        </div>
-
-        {/* INPUTS DE LOS DATOS */}
-        <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-4 w-full">
-          <div className="space-y-2">
-            <Label className="font-semibold text-gray-700 dark:text-zinc-300">
-              Nombre Completo
-            </Label>
-            <Input
-              name="socioNombreApellido"
-              value={data.socioNombreApellido || ""}
-              disabled
-              className="disabled:bg-white disabled:opacity-70 bg-gray-100 border-gray-300 text-gray-900 dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white"
-            />
+      {/* DATOS DEL SOCIO SELECCIONADO */}
+      <div className="grid grid-cols-1 gap-6 sm:gap-8 w-full h-full">
+        <div className="space-y-4 p-4 sm:p-5 rounded-lg border border-gray-200 bg-gray-50 dark:bg-zinc-900/80 dark:backdrop-blur-xl dark:border-white/10 dark:ring-1 dark:ring-white/5 transition-colors duration-300">
+          <h3 className="font-bold text-[#C4A77D] uppercase tracking-wide">
+            Datos del Socio
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label className="font-semibold text-gray-700 dark:text-zinc-300">
+                Nombre Completo
+              </Label>
+              <Input
+                name="socioNombreApellido"
+                value={data.socioNombreApellido || ""}
+                disabled
+                className="disabled:bg-white disabled:opacity-70 bg-gray-100 border-gray-300 text-gray-900 dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="font-semibold text-gray-700 dark:text-zinc-300">
+                Documento N°
+              </Label>
+              <Input
+                name="socioDni"
+                value={data.socioDni || ""}
+                disabled
+                className="disabled:bg-white disabled:opacity-70 bg-gray-100 border-gray-300 text-gray-900 dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="font-semibold text-gray-700 dark:text-zinc-300">
+                Estado
+              </Label>
+              <Input
+                name="socioBaja"
+                value={data.socioBaja || ""}
+                disabled
+                className={
+                  data.socioBaja.includes("Activo")
+                    ? "disabled:bg-green-100 disabled:opacity-70 bg-green-100 border-green-300 text-green-800 dark:bg-green-950/60 dark:border-green-800/60 dark:text-green-300 font-bold"
+                    : data.socioBaja.includes("baja")
+                      ? "disabled:bg-red-100 disabled:opacity-70 bg-red-100 border-red-300 text-red-800 dark:bg-red-950/60 dark:border-red-800/60 dark:text-red-300 font-bold"
+                      : "disabled:bg-white disabled:opacity-70 bg-gray-100 border-gray-300 text-gray-900 dark:bg-zinc-950/50 dark:border-[#C4A77D] font-bold dark:text-white"
+                }
+              />
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label className="font-semibold text-gray-700 dark:text-zinc-300">
-              Documento N°
-            </Label>
-            <Input
-              name="socioDni"
-              value={data.socioDni || ""}
-              disabled
-              className="disabled:bg-white disabled:opacity-70 bg-gray-100 border-gray-300 text-gray-900 dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label className="font-semibold text-gray-700 dark:text-zinc-300">
-              Estado
-            </Label>
-            <Input
-              name="socioBaja"
-              value={data.socioBaja || ""}
-              disabled
-              className={
-                data.socioBaja.includes("Activo")
-                  ? "disabled:bg-green-100 disabled:opacity-70 bg-green-100 border-green-300 text-green-800 dark:bg-green-950/60 dark:border-green-800/60 dark:text-green-300 font-bold"
-                  : data.socioBaja.includes("baja")
-                    ? "disabled:bg-red-100 disabled:opacity-70 bg-red-100 border-red-300 text-red-800 dark:bg-red-950/60 dark:border-red-800/60 dark:text-red-300 font-bold"
-                    : "disabled:bg-white disabled:opacity-70 bg-gray-100 border-gray-300 text-gray-900 dark:bg-zinc-950/50 dark:border-[#C4A77D] font-bold dark:text-white"
-              }
-            />
-          </div>
-          <Button
-            disabled={loading || data.socioBaja.includes("Dado de baja")}
-            size="lg"
-            onClick={handleRegistrarIngreso}
-            className="bg-[#C4A77D] hover:bg-[#C4A77D]/90 text-white hover:text-black transition-all duration-300 dark:text-black font-bold border-none w-full sm:w-auto bg-gradient-to-br from-[#E2C792] via-[#C4A77D] to-[#8A7350] dark:border dark:border-[#E2C792]/40"
-          >
-            {loading ? "Registrando ingreso..." : "Marcar ingreso"}
-          </Button>
         </div>
       </div>
+
+      {/* SECCIÓN ADMINISTRADOR 
+      {usuario.includes("admin") && (
+        <>
+          <h2 className="text-xl sm:text-2xl font-bold border-b-2 border-[#C4A77D] pb-3 text-gray-900 dark:text-white mt-8">
+            Modificar datos socio seleccionado
+          </h2>
+          <div className="grid grid-cols-1 gap-6 sm:gap-8 h-full w-full">
+            <div className="space-y-4 p-4 sm:p-5 rounded-lg border border-gray-200 bg-gray-50 dark:bg-zinc-900/80 dark:backdrop-blur-xl dark:border-white/10 dark:ring-1 dark:ring-white/5 transition-colors duration-300">
+              <h3 className="font-bold text-[#C4A77D] uppercase tracking-wide">
+                Edición Manual
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label className="font-semibold text-gray-700 dark:text-zinc-300">
+                    Nombre Completo
+                  </Label>
+                  <Input
+                    name="socioNombreApellido"
+                    value={data.socioNombreApellido || ""}
+                    className="bg-white border-gray-300 text-gray-900 focus-visible:ring-[#C4A77D] dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white dark:shadow-inner"
+                    onChange={handleChange}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-semibold text-gray-700 dark:text-zinc-300">
+                    Documento N°
+                  </Label>
+                  <Input
+                    name="socioDni"
+                    value={data.socioDni || ""}
+                    className="bg-white border-gray-300 text-gray-900 focus-visible:ring-[#C4A77D] dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white dark:shadow-inner"
+                    onChange={handleChange}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="font-semibold text-gray-700 dark:text-zinc-300">
+                    Estado
+                  </Label>
+                  <Select
+                    value={data.socioBaja || ""}
+                    onValueChange={(val) =>
+                      handleSelectChange("socioBaja", val)
+                    }
+                  >
+                    <SelectTrigger
+                      className={
+                        data.socioBaja.includes("Activo")
+                          ? "bg-green-100 border-green-300 text-green-800 dark:bg-green-950/60 dark:border-green-800/60 dark:text-green-300 font-bold w-full"
+                          : data.socioBaja.includes("baja")
+                            ? "bg-red-100 border-red-300 text-red-800 dark:bg-red-950/60 dark:border-red-800/60 dark:text-red-300 font-bold w-full"
+                            : "bg-white border-gray-300 text-gray-900 dark:bg-zinc-950/50 dark:border-[#C4A77D] font-bold dark:text-white w-full dark:shadow-inner"
+                      }
+                    >
+                      <SelectValue placeholder="Seleccione estado" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-gray-200 text-gray-900 dark:bg-zinc-900 dark:border-white/10 dark:text-white">
+                      <SelectGroup>
+                        <SelectItem
+                          value={"Activo"}
+                          className="hover:bg-gray-100 dark:hover:bg-zinc-800 cursor-pointer"
+                        >
+                          Activo
+                        </SelectItem>
+                        <SelectItem
+                          value={"Dado de baja"}
+                          className="hover:bg-gray-100 dark:hover:bg-zinc-800 cursor-pointer"
+                        >
+                          Dado de baja
+                        </SelectItem>
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+            <div className="pt-2 flex flex-col sm:flex-row justify-end gap-4">
+              <Button
+                disabled={loading}
+                size="lg"
+                onClick={handleEditarSocio}
+                className="bg-[#C4A77D] hover:bg-[#C4A77D]/90 text-white dark:text-black font-bold px-8 py-6 text-lg shadow-lg w-full sm:w-auto transition-all bg-gradient-to-br from-[#E2C792] via-[#C4A77D] to-[#8A7350] dark:border dark:border-[#E2C792]/40"
+              >
+                {loading ? "Modificando..." : "Modificar datos del socio"}
+              </Button>
+            </div>
+          </div>
+        </>
+      )}*/}
     </div>
   );
 }

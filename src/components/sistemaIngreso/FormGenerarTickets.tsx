@@ -57,6 +57,18 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
     cantidad: "",
   });
 
+  // <-- NUEVO: Función auxiliar centralizada para guardar logs -->
+  const registrarLog = async (accion: string, descripcion: string) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      await supabase
+        .from("logs_auditoria")
+        .insert([{ usuario_id: user.id, accion, descripcion }]);
+    }
+  };
+
   // 1. Verificar turno abierto y cargar tipos de tickets al iniciar
   useEffect(() => {
     async function inicializar() {
@@ -115,6 +127,16 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
 
       if (error) throw error;
       setTurnoAbierto(nuevoTurno);
+
+      if (user) {
+        await supabase.from("logs_auditoria").insert([
+          {
+            usuario_id: user.id,
+            accion: "APERTURA CAJA",
+            descripcion: `EL USUARIO ABRIÓ LA CAJA`,
+          },
+        ]);
+      }
     } catch (error: any) {
       toast.error("ERROR AL ABRIR LA CAJA", {
         description: `OCURRIÓ UN ERROR AL ABRIR LA CAJA ${error.message}`,
@@ -269,6 +291,12 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
         tipoSeleccionado.precio,
       );
 
+      // <-- NUEVO: Registro de log al imprimir tickets -->
+      await registrarLog(
+        "IMPRESION_TICKETS",
+        `Generó e imprimió ${data.cantidad} tickets de tipo ${tipoSeleccionado.nombre}`,
+      );
+
       setData({ ...data, cantidad: "" });
     } catch (error: any) {
       toast.error("ERROR AL GENERAR LOTE", {
@@ -327,6 +355,15 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
       toast.success("SOBRANTES DECLARADOS", {
         description: `Se marcaron los últimos ${cantidadSobrante} tickets como sobrantes correctamente.`,
       });
+
+      // <-- NUEVO: Registro de log al declarar sobrantes -->
+      const tipoSobrante = tiposTicket.find(
+        (t) => t.id === Number(sobranteData.tipo_ticket_id),
+      );
+      await registrarLog(
+        "DECLARACION_SOBRANTES",
+        `Marcó ${cantidadSobrante} tickets de tipo ${tipoSobrante?.nombre || "Desconocido"} como sobrantes`,
+      );
 
       setSobranteData({ tipo_ticket_id: "", cantidad: "" });
     } catch (error: any) {

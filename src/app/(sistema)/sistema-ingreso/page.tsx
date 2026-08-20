@@ -23,8 +23,14 @@ export default async function IngresoPage() {
 
   // Imprimimos el error para ver qué dice Supabase
   const perfil = data as { rol: string } | null;
-  const rol = perfil?.rol === "ADMIN" ? "admin" : "ingreso";
+  const rol =
+    perfil?.rol === "ADMIN"
+      ? "admin"
+      : perfil?.rol === "SUPERVISOR"
+        ? "supervisor"
+        : "ingreso";
 
+  console.log(rol);
   // 3. Renderizar el componente cliente pasándole el rol
   return <HeroUI rolInicial={rol} />;
 }

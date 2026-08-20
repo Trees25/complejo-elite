@@ -93,6 +93,12 @@ export default function FormCrearUsuario() {
                   >
                     Admin
                   </SelectItem>
+                  <SelectItem
+                    value="SUPERVISOR"
+                    className="hover:bg-gray-100 dark:hover:bg-zinc-800 cursor-pointer"
+                  >
+                    Supervisor
+                  </SelectItem>
                 </SelectGroup>
               </SelectContent>
             </Select>

@@ -85,12 +85,15 @@ export default function CierreCaja({ usuario }: { usuario: string }) {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
+      console.log(user);
+      console.log(usuario);
 
       // 1. Buscar si hay un turno de caja abierto
       const { data: turno, error: errorTurno } = await supabase
         .from("turnos_caja")
         .select("*")
         .eq("estado", "ABIERTA")
+        .eq("usuario_id", user.id)
         .maybeSingle();
 
       if (errorTurno) throw errorTurno;
