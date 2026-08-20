@@ -58,7 +58,7 @@ export default function DashboardSupervisor({ usuario }: { usuario: string }) {
 
               return {
                 ...turno,
-                empleado: turno.perfiles?.nombre || "Desconocido",
+                empleado: turno.perfiles?[0]?.nombre || "Desconocido",
                 ticketsEmitidos: emitidos || 0,
                 ticketsBaja: bajas || 0,
               };
