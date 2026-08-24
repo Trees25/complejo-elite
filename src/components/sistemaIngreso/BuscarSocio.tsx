@@ -523,6 +523,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
       setLoading(false);
     }
   };
+
   return (
     <div className="space-y-6 sm:space-y-8 p-4 sm:p-8 bg-white text-gray-900 border border-gray-200 rounded-xl shadow-lg relative dark:bg-zinc-950 dark:text-white dark:border-white/10 dark:shadow-2xl dark:shadow-black/80 transition-colors duration-300">
       {/* MODAL NUEVO SOCIO (Individual) */}

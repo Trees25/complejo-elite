@@ -3,6 +3,8 @@ import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from "html5-qrcode";
+
 import { toast } from "sonner";
 import {
   Check,
@@ -43,6 +45,7 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
   const [tiposTicket, setTiposTicket] = useState<TipoTicket[]>([]);
   const [modalMontoInicial, setModalMontoInicial] = useState(false);
   const [guardandoMonto, setGuardandoMonto] = useState(false);
+  const [scannerActivoTickets, setScannerActivoTickets] = useState(false);
 
   // Estado para impresión
   const [data, setData] = useState({
@@ -145,6 +148,47 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    let scanner: Html5QrcodeScanner | null = null;
+
+    if (scannerActivoTickets) {
+      const config = {
+        fps: 5,
+        formatsToSupport: [Html5QrcodeSupportedFormats.QR_CODE],
+        showTorchButtonIfSupported: true,
+        showZoomSliderIfSupported: true,
+      };
+
+      scanner = new Html5QrcodeScanner("reader", config, false);
+
+      scanner.render(
+        async (decodedText) => {
+          alert(decodedText);
+          handleDeclararSobranteQR(decodedText);
+
+          try {
+            if (scanner) {
+              await scanner.clear();
+            }
+          } catch (error: any) {
+            console.error("Error al limpiar:", error);
+          } finally {
+            setScannerActivoTickets(false);
+          }
+        },
+        (error) => {
+          // Silenciar errores de lectura continua
+        },
+      );
+    }
+
+    return () => {
+      if (scanner) {
+        scanner.clear().catch(() => {});
+      }
+    };
+  }, [scannerActivoTickets]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setData({ ...data, [e.target.name]: e.target.value });
@@ -424,6 +468,52 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
     );
   }
 
+  const handleDeclararSobranteQR = async (idQR: any) => {
+    if (!idQR) {
+      return toast.error("QR INVÁLIDO", {
+        description: "El codigo QR no es válido.",
+      });
+    }
+
+    setLoadingSobrantes(true);
+    try {
+      const { data, error: updateError } = await supabase
+        .from("tickets")
+        .update({ estado: "SOBRANTE" })
+        .eq("id", idQR)
+        .select("id, tipos_ticket(nombre)"); // <-- Hace el JOIN y trae el nombre
+
+      if (updateError) throw updateError;
+      const ticketsActualizados = data as any as
+        | {
+            id: string;
+            tipos_ticket: { nombre: string } | null;
+          }[]
+        | null;
+      let nombreTicket = "";
+      if (ticketsActualizados && ticketsActualizados.length > 0) {
+        // Sacamos el nombre del primer ticket actualizado a modo de ejemplo
+        nombreTicket =
+          ticketsActualizados[0].tipos_ticket?.nombre || "Desconocido";
+      }
+      toast.success("SOBRANTE DECLARADO", {
+        description: `Se marcó como sobrante correctamente`,
+      });
+      await registrarLog(
+        "DECLARACION_SOBRANTES",
+        `Se marcó como sobrante un ticket de tipo ${nombreTicket} via qr`,
+      );
+
+      setSobranteData({ tipo_ticket_id: "", cantidad: "" });
+    } catch (error: any) {
+      toast.error("ERROR AL DECLARAR", {
+        description: `OCURRIÓ UN ERROR: ${error.message}`,
+      });
+    } finally {
+      setLoadingSobrantes(false);
+    }
+  };
+
   return (
     <div className="space-y-6 sm:space-y-8 p-4 sm:p-8 bg-white text-gray-900 border border-gray-200 rounded-xl shadow-lg dark:bg-zinc-950 dark:text-white dark:border-white/10 dark:shadow-2xl dark:shadow-black/80 transition-colors duration-300">
       <div className="flex justify-between items-center border-b-2 border-[#C4A77D] pb-3">
@@ -559,18 +649,47 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
                 placeholder="Ej: 10"
               />
             </div>
-          </div>
 
-          <div className="pt-2 flex flex-col sm:flex-row justify-end gap-4">
             <Button
-              disabled={loadingSobrantes || !sobranteData.tipo_ticket_id}
-              size="lg"
-              onClick={handleDeclararSobrantes}
-              className="bg-[#C4A77D] hover:bg-red-600 hover:text-white text-white hover:text-black transition-all duration-300 dark:hover:text-white dark:text-black dark:hover:bg-red-500 dark:hover:text-white font-bold px-8 py-6 text-lg shadow-lg w-full sm:w-auto transition-all"
+              type="button"
+              onClick={() => setScannerActivoTickets(!scannerActivoTickets)}
+              className="bg-[#C4A77D] hover:bg-[#C4A77D]/90 text-white hover:text-black transition-all duration-300 dark:text-black font-bold flex items-center gap-2 bg-gradient-to-br from-[#E2C792] via-[#C4A77D] to-[#8A7350] dark:border dark:border-[#E2C792]/40 shadow-lg"
             >
-              {loadingSobrantes ? "Procesando..." : "Marcar como sobrantes"}
+              <Camera className="w-4 h-4" />
+              {scannerActivoTickets ? "Cerrar Escáner" : "Escanear ticket"}
             </Button>
           </div>
+
+          {/* VENTANA DEL ESCÁNER DE CÁMARA */}
+          {scannerActivoTickets && (
+            <div className="bg-gray-50 border border-gray-300 dark:bg-zinc-900/80 dark:backdrop-blur-xl dark:border-white/10 p-4 rounded-lg relative transition-colors duration-300">
+              <div className="flex justify-between items-center mb-2">
+                <span className="font-bold text-sm text-[#C4A77D]">
+                  Apunte la cámara al código de barras o QR
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setScannerActivoTickets(false)}
+                  className="text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-zinc-800"
+                >
+                  <X className="w-6 h-6" />
+                </Button>
+              </div>
+              <div id="reader" className="w-full max-w-md mx-auto"></div>
+            </div>
+          )}
+        </div>
+
+        <div className="pt-2 flex flex-col sm:flex-row justify-end gap-4">
+          <Button
+            disabled={loadingSobrantes || !sobranteData.tipo_ticket_id}
+            size="lg"
+            onClick={handleDeclararSobrantes}
+            className="bg-[#C4A77D] hover:bg-red-600 hover:text-white text-white hover:text-black transition-all duration-300 dark:hover:text-white dark:text-black dark:hover:bg-red-500 dark:hover:text-white font-bold px-8 py-6 text-lg shadow-lg w-full sm:w-auto transition-all"
+          >
+            {loadingSobrantes ? "Procesando..." : "Marcar como sobrantes"}
+          </Button>
         </div>
       </div>
     </div>
