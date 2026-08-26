@@ -47,6 +47,12 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
   const [guardandoMonto, setGuardandoMonto] = useState(false);
   const [scannerActivoTickets, setScannerActivoTickets] = useState(false);
 
+  // Estado para la vista previa del ticket
+  const [modalPreview, setModalPreview] = useState(false);
+
+  // <-- NUEVO: Estado para guardar el nombre real del operario -->
+  const [nombreOperario, setNombreOperario] = useState<string>("");
+
   // Estado para impresión
   const [data, setData] = useState({
     tipo_ticket_id: "",
@@ -60,7 +66,7 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
     cantidad: "",
   });
 
-  // <-- NUEVO: Función auxiliar centralizada para guardar logs -->
+  // Función auxiliar centralizada para guardar logs
   const registrarLog = async (accion: string, descripcion: string) => {
     const {
       data: { user },
@@ -79,6 +85,17 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
         data: { user },
       } = await supabase.auth.getUser();
       if (!user) return;
+
+      // <-- NUEVO: Buscamos el nombre del operario en la tabla perfiles -->
+      const { data: perfil } = await supabase
+        .from("perfiles")
+        .select("nombre")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (perfil && perfil.nombre) {
+        setNombreOperario(perfil.nombre);
+      }
 
       const { data: turno } = await supabase
         .from("turnos_caja")
@@ -164,7 +181,6 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
 
       scanner.render(
         async (decodedText) => {
-          alert(decodedText);
           handleDeclararSobranteQR(decodedText);
 
           try {
@@ -239,6 +255,13 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
     const SALTO = "\n";
     const CORTE = GS + "V" + "\x41" + "\x03";
 
+    // <-- NUEVO: Obtenemos fecha y hora para la impresión -->
+    const fechaActual = new Date().toLocaleDateString("es-AR");
+    const horaActual = new Date().toLocaleTimeString("es-AR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+
     let payloadImpresion = "";
 
     ticketsGenerados.forEach((ticket, index) => {
@@ -250,9 +273,12 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
       payloadImpresion +=
         "VALOR: $" + Math.round(precio).toLocaleString("es-AR") + SALTO + SALTO;
       payloadImpresion += generarQRComando(ticket.id) + SALTO + SALTO;
-      payloadImpresion +=
-        "Ticket #" + (index + 1) + " - Valido por el dia de emision" + SALTO;
-      payloadImpresion += "ID: " + ticket.id.substring(0, 8) + "..." + SALTO;
+
+      // <-- NUEVO: Reemplazamos el pie de página del ticket físico -->
+      payloadImpresion += `Fecha: ${fechaActual}  Hora: ${horaActual}` + SALTO;
+      payloadImpresion += `Operario: ${nombreOperario || "Caja"}` + SALTO;
+      //payloadImpresion += "ID: " + ticket.id.substring(0, 8) + "..." + SALTO;
+
       payloadImpresion += CORTE;
     });
 
@@ -335,7 +361,7 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
         tipoSeleccionado.precio,
       );
 
-      // <-- NUEVO: Registro de log al imprimir tickets -->
+      // Registro de log al imprimir tickets
       await registrarLog(
         "IMPRESION_TICKETS",
         `Generó e imprimió ${data.cantidad} tickets de tipo ${tipoSeleccionado.nombre}`,
@@ -400,7 +426,6 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
         description: `Se marcaron los últimos ${cantidadSobrante} tickets como sobrantes correctamente.`,
       });
 
-      // <-- NUEVO: Registro de log al declarar sobrantes -->
       const tipoSobrante = tiposTicket.find(
         (t) => t.id === Number(sobranteData.tipo_ticket_id),
       );
@@ -481,7 +506,7 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
         .from("tickets")
         .update({ estado: "SOBRANTE" })
         .eq("id", idQR)
-        .select("id, tipos_ticket(nombre)"); // <-- Hace el JOIN y trae el nombre
+        .select("id, tipos_ticket(nombre)");
 
       if (updateError) throw updateError;
       const ticketsActualizados = data as any as
@@ -492,7 +517,6 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
         | null;
       let nombreTicket = "";
       if (ticketsActualizados && ticketsActualizados.length > 0) {
-        // Sacamos el nombre del primer ticket actualizado a modo de ejemplo
         nombreTicket =
           ticketsActualizados[0].tipos_ticket?.nombre || "Desconocido";
       }
@@ -514,8 +538,80 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
     }
   };
 
+  const tipoSeleccionado = tiposTicket.find(
+    (t) => t.id === Number(data.tipo_ticket_id),
+  );
+
   return (
     <div className="space-y-6 sm:space-y-8 p-4 sm:p-8 bg-white text-gray-900 border border-gray-200 rounded-xl shadow-lg dark:bg-zinc-950 dark:text-white dark:border-white/10 dark:shadow-2xl dark:shadow-black/80 transition-colors duration-300">
+      {/* MODAL VISTA PREVIA TICKET */}
+      {modalPreview && tipoSeleccionado && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 dark:bg-black/60 p-4 backdrop-blur-sm">
+          <div className="bg-gray-100 rounded-xl shadow-2xl p-6 w-full max-w-sm relative flex flex-col items-center border border-gray-300 dark:bg-zinc-900 dark:border-white/10">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-4 top-4 text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-zinc-800"
+              onClick={() => setModalPreview(false)}
+            >
+              <X className="w-5 h-5" />
+            </Button>
+            <h2 className="font-bold mb-6 text-gray-800 dark:text-white border-b border-[#C4A77D] pb-2 w-full text-center uppercase tracking-wider">
+              Diseño del Ticket
+            </h2>
+
+            {/* MOCKUP DEL PAPEL TÉRMICO (Simulación 80mm) */}
+            <div className="bg-white border border-gray-300 p-6 w-[320px] flex flex-col items-center text-black font-mono shadow-sm">
+              <h1 className="text-xl font-bold tracking-wide text-center mt-2">
+                ELITE CLUB
+              </h1>
+              <p className="text-[11px] text-center mb-8">
+                Complejo Deportivo y Eventos
+              </p>
+
+              <h2 className="text-[13px] font-bold uppercase text-center leading-tight">
+                {tipoSeleccionado.nombre}
+              </h2>
+              <p className="text-[13px] font-bold text-center mb-8">
+                VALOR: $
+                {Math.round(tipoSeleccionado.precio).toLocaleString("es-AR")}
+              </p>
+
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=VISTA-PREVIA-123456`}
+                alt="QR Code"
+                className="mb-8 w-[110px] h-[110px]"
+              />
+
+              {/* <-- NUEVO: Pie de ticket modificado en la vista previa --> */}
+              <p className="text-[10px] text-center leading-tight">
+                Fecha: {new Date().toLocaleDateString("es-AR")} Hora:{" "}
+                {new Date().toLocaleTimeString("es-AR", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
+              <p className="text-[10px] text-center leading-tight mb-2">
+                Operario: {nombreOperario || "Caja"}
+              </p>
+              {/*
+              <p className="text-[10px] text-center mb-2 leading-tight">
+                ID: 1b0a88a9...
+              </p>*/}
+            </div>
+
+            <div className="mt-6 w-full flex justify-end">
+              <Button
+                onClick={() => setModalPreview(false)}
+                className="bg-gray-800 text-white hover:bg-gray-700 dark:bg-zinc-800 dark:hover:bg-zinc-700"
+              >
+                Cerrar vista previa
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-between items-center border-b-2 border-[#C4A77D] pb-3">
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
           Control de Tickets
@@ -581,6 +677,17 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
 
           <div className="pt-2 flex flex-col sm:flex-row justify-end gap-4">
             <Button
+              type="button"
+              disabled={!data.tipo_ticket_id}
+              variant="outline"
+              size="lg"
+              onClick={() => setModalPreview(true)}
+              className=" bg-[#C4A77D] hover:bg-[#C4A77D]/90 text-white hover:text-black transition-all duration-300 dark:hover:text-white dark:text-black font-bold px-8 py-6 text-lg shadow-lg w-full sm:w-auto transition-all bg-gradient-to-br from-[#E2C792] via-[#C4A77D] to-[#8A7350] dark:border dark:border-[#E2C792]/40 "
+            >
+              Ver diseño
+            </Button>
+
+            <Button
               disabled={loading || !data.tipo_ticket_id}
               size="lg"
               onClick={handleGenerarLote}
@@ -592,7 +699,7 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
         </div>
       </div>
 
-      {/* SECCIÓN 2: SOBRANTES (NUEVA) */}
+      {/* SECCIÓN 2: SOBRANTES */}
       <div className="grid grid-cols-1 gap-6 sm:gap-8 w-full h-full">
         <div className="space-y-4 p-4 sm:p-5 rounded-lg border border-gray-200 bg-gray-50 dark:bg-zinc-900/80 dark:backdrop-blur-xl dark:border-white/10 dark:ring-1 dark:ring-white/5 transition-colors duration-300">
           <h3 className="font-bold text-[#C4A77D] uppercase tracking-wide">
