@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { createClient } from "@/utils/supabase/client";
 import { toast } from "sonner";
 import FormCrearUsuario from "./CrearUsuario";
+
 import {
   Select,
   SelectContent,
@@ -45,7 +46,22 @@ export default function CrearTicket({ usuario }: { usuario: String }) {
     ticketEstado: "",
   });
 
-  if (!usuario || !usuario.includes("admin")) {
+  // <-- NUEVO: Función auxiliar centralizada para guardar logs -->
+  const registrarLog = async (accion: string, descripcion: string) => {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      await supabase
+        .from("logs_auditoria")
+        .insert([{ usuario_id: user.id, accion, descripcion }]);
+    }
+  };
+
+  if (
+    !usuario ||
+    (!usuario.includes("admin") && !usuario.includes("supervisor"))
+  ) {
     return (
       <div className="p-8 bg-red-100 text-red-800 border border-red-300 rounded-lg dark:bg-red-950/50 dark:text-red-400 dark:border-red-900/50">
         <h2 className="font-bold text-xl">Acceso Denegado</h2>
@@ -107,6 +123,13 @@ export default function CrearTicket({ usuario }: { usuario: String }) {
       toast.success("TICKET CREADO", {
         description: "EL TICKET FUE CREADO CORRECTAMENTE",
       });
+
+      // <-- NUEVO: Registro del log al crear ticket -->
+      await registrarLog(
+        "CREACION_TICKET",
+        `Creó un nuevo ticket llamado "${data.nombre}" con precio $${data.precio}`,
+      );
+
       setData({ ...data, nombre: "", precio: "" });
       // Recargar listas
       const { data: tipos } = await supabase.from("tipos_ticket").select("*");
@@ -137,22 +160,69 @@ export default function CrearTicket({ usuario }: { usuario: String }) {
 
   const handleGuardarPrecios = async () => {
     setLoading(true);
-    for (let Ticket of precios) {
-      if (Number(Ticket.precio) < 0) {
+
+    // 1. Arrays para guardar solo lo que cambió
+    const preciosModificados = [];
+    const detallesLog = [];
+
+    // 2. Comparamos los valores de los inputs (precios) con los originales (tiposTicket)
+    for (let precioActual of precios) {
+      if (Number(precioActual.precio) < 0) {
         toast.error("TICKET INCORRECTO", {
-          description: `EL TICKET ${Ticket.nombre} TIENE UN VALOR INVÁLIDO`,
+          description: `EL TICKET ${precioActual.nombre} TIENE UN VALOR INVÁLIDO`,
         });
         setLoading(false);
         return;
       }
+
+      const ticketOriginal = tiposTicket.find((t) => t.id === precioActual.id);
+
+      // Si el ticket existe y el precio ingresado es diferente al original de la BD
+      if (
+        ticketOriginal &&
+        Number(ticketOriginal.precio) !== Number(precioActual.precio)
+      ) {
+        preciosModificados.push(precioActual);
+        detallesLog.push(`"${precioActual.nombre}" a $${precioActual.precio}`);
+      }
     }
+
+    // 3. Si no hubo ningún cambio, cortamos la función para no gastar peticiones a la BD
+    if (preciosModificados.length === 0) {
+      toast.info("SIN CAMBIOS", {
+        description: "No se modificó el precio de ningún ticket.",
+      });
+      setLoading(false);
+      return;
+    }
+
     try {
-      const { error } = await supabase.from("tipos_ticket").upsert(precios);
+      // 4. Hacemos el upsert ÚNICAMENTE con los que cambiaron
+      const { error } = await supabase
+        .from("tipos_ticket")
+        .upsert(preciosModificados);
 
       if (error) throw error;
+
       toast.success("PRECIOS ACTUALIZADOS", {
         description: "LOS PRECIOS FUERON ACTUALIZADOS CORRECTAMENTE",
       });
+
+      // 5. Guardamos el log ultra detallado
+      await registrarLog(
+        "ACTUALIZACION_PRECIOS",
+        `Actualizó los precios de: ${detallesLog.join(", ")}`,
+      );
+
+      // 6. Refrescamos los estados para que la "base" vuelva a ser la correcta
+      const { data: tipos } = await supabase
+        .from("tipos_ticket")
+        .select("*")
+        .order("id", { ascending: true });
+      if (tipos) {
+        setTiposTicket(tipos as TipoTicket[]);
+        setPrecios(tipos as Precio[]);
+      }
     } catch (error: any) {
       toast.error("TICKET NO ACTUALIZADOS", {
         description: `OCURRIÓ UN ERROR AL ACTUALIZAR LOS TICKETS ${error.message}`,
@@ -173,14 +243,33 @@ export default function CrearTicket({ usuario }: { usuario: String }) {
         .eq("id", data.ticket);
 
       if (error) throw error;
+
+      // <-- NUEVO: Encontrar el nombre del ticket afectado para el log -->
+      const ticketAfectado = tiposTicket.find(
+        (t) => String(t.id) === String(data.ticket),
+      );
+      const nombreTicket = ticketAfectado
+        ? ticketAfectado.nombre
+        : `ID ${data.ticket}`;
+
       if (data.ticketEstado === "Activo") {
         toast.success("TICKET ACTIVADO", {
           description: `EL TICKET FUE ACTIVADO CORRECTAMENTE`,
         });
+        // <-- NUEVO: Log activar -->
+        await registrarLog(
+          "EDICION_ESTADO_TICKET",
+          `Reactivó el ticket "${nombreTicket}"`,
+        );
       } else {
         toast.success("TICKET DESACTIVADO", {
           description: `EL TICKET FUE DESACTIVADO CORRECTAMENTE`,
         });
+        // <-- NUEVO: Log desactivar -->
+        await registrarLog(
+          "EDICION_ESTADO_TICKET",
+          `Dio de baja el ticket "${nombreTicket}"`,
+        );
       }
     } catch (error: any) {
       toast.error("TICKET NO DESACTIVADO", {

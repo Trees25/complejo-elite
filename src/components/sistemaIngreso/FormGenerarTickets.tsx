@@ -407,7 +407,7 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
 
       if (!tickets || tickets.length < cantidadSobrante) {
         toast.error("EXCEDE EL LÍMITE", {
-          description: `No puede declarar ${cantidadSobrante} sobrantes. Solo hay ${tickets?.length || 0} tickets disponibles de este tipo en su turno actual.`,
+          description: `No puede declarar ${cantidadSobrante} anulados. Solo hay ${tickets?.length || 0} tickets disponibles de este tipo en su turno actual.`,
         });
         setLoadingSobrantes(false);
         return;
@@ -422,8 +422,8 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
 
       if (updateError) throw updateError;
 
-      toast.success("SOBRANTES DECLARADOS", {
-        description: `Se marcaron los últimos ${cantidadSobrante} tickets como sobrantes correctamente.`,
+      toast.success("ANULADOS DECLARADOS", {
+        description: `Se marcaron los últimos ${cantidadSobrante} tickets como anulados correctamente.`,
       });
 
       const tipoSobrante = tiposTicket.find(
@@ -431,7 +431,7 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
       );
       await registrarLog(
         "DECLARACION_SOBRANTES",
-        `Marcó ${cantidadSobrante} tickets de tipo ${tipoSobrante?.nombre || "Desconocido"} como sobrantes`,
+        `Marcó ${cantidadSobrante} tickets de tipo ${tipoSobrante?.nombre || "Desconocido"} como anulados`,
       );
 
       setSobranteData({ tipo_ticket_id: "", cantidad: "" });
@@ -700,105 +700,115 @@ export default function FormGenerarTickets({ usuario }: { usuario: String }) {
       </div>
 
       {/* SECCIÓN 2: SOBRANTES */}
-      <div className="grid grid-cols-1 gap-6 sm:gap-8 w-full h-full">
-        <div className="space-y-4 p-4 sm:p-5 rounded-lg border border-gray-200 bg-gray-50 dark:bg-zinc-900/80 dark:backdrop-blur-xl dark:border-white/10 dark:ring-1 dark:ring-white/5 transition-colors duration-300">
-          <h3 className="font-bold text-[#C4A77D] uppercase tracking-wide">
-            Declarar Tickets Sobrantes
-          </h3>
-          <p className="text-sm text-gray-600 dark:text-zinc-300">
-            Indique el tipo de ticket y la cantidad sobrante. El sistema anulará
-            los <strong>últimos tickets generados</strong> de ese tipo durante
-            su turno actual.
-          </p>
+      {(usuario.includes("admin") || usuario.includes("supervisor")) && (
+        <>
+          <div className="grid grid-cols-1 gap-6 sm:gap-8 w-full h-full">
+            <div className="space-y-4 p-4 sm:p-5 rounded-lg border border-gray-200 bg-gray-50 dark:bg-zinc-900/80 dark:backdrop-blur-xl dark:border-white/10 dark:ring-1 dark:ring-white/5 transition-colors duration-300">
+              <h3 className="font-bold text-[#C4A77D] uppercase tracking-wide">
+                Declarar Tickets Anulados
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-zinc-300">
+                Indique el tipo de ticket y la cantidad sobrante. El sistema
+                anulará los <strong>últimos tickets generados</strong> de ese
+                tipo durante su turno actual.
+              </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label className="font-semibold text-gray-700 dark:text-zinc-300">
-                Tipo de Acceso
-              </Label>
-              <Select
-                value={sobranteData.tipo_ticket_id}
-                onValueChange={(val) =>
-                  setSobranteData({ ...sobranteData, tipo_ticket_id: val })
-                }
-              >
-                <SelectTrigger className="w-full bg-white border-[#C4A77D] text-gray-900 dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white">
-                  <SelectValue placeholder="Seleccione el tipo" />
-                </SelectTrigger>
-                <SelectContent className="bg-white border-gray-200 text-gray-900 dark:bg-zinc-900 dark:border-[#C4A77D] dark:text-white">
-                  <SelectGroup>
-                    {tiposTicket.map((tipo) => (
-                      <SelectItem
-                        key={tipo.id}
-                        value={String(tipo.id)}
-                        className="hover:bg-gray-100 dark:hover:bg-zinc-800 cursor-pointer"
-                      >
-                        {tipo.nombre}
-                      </SelectItem>
-                    ))}
-                  </SelectGroup>
-                </SelectContent>
-              </Select>
-            </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="font-semibold text-gray-700 dark:text-zinc-300">
+                    Tipo de Acceso
+                  </Label>
+                  <Select
+                    value={sobranteData.tipo_ticket_id}
+                    onValueChange={(val) =>
+                      setSobranteData({
+                        ...sobranteData,
+                        tipo_ticket_id: val,
+                      })
+                    }
+                  >
+                    <SelectTrigger className="w-full bg-white border-[#C4A77D] text-gray-900 dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white">
+                      <SelectValue placeholder="Seleccione el tipo" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white border-gray-200 text-gray-900 dark:bg-zinc-900 dark:border-[#C4A77D] dark:text-white">
+                      <SelectGroup>
+                        {tiposTicket.map((tipo) => (
+                          <SelectItem
+                            key={tipo.id}
+                            value={String(tipo.id)}
+                            className="hover:bg-gray-100 dark:hover:bg-zinc-800 cursor-pointer"
+                          >
+                            {tipo.nombre}
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            <div className="space-y-2">
-              <Label className="font-semibold text-gray-700 dark:text-zinc-300">
-                Cantidad Sobrante
-              </Label>
-              <Input
-                type="number"
-                min="1"
-                value={sobranteData.cantidad}
-                onChange={(e) =>
-                  setSobranteData({ ...sobranteData, cantidad: e.target.value })
-                }
-                className="bg-white text-gray-900 focus-visible:ring-[#C4A77D] border-[#C4A77D] dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white dark:shadow-inner transition-colors duration-300"
-                placeholder="Ej: 10"
-              />
-            </div>
+                <div className="space-y-2">
+                  <Label className="font-semibold text-gray-700 dark:text-zinc-300">
+                    Cantidad Sobrante
+                  </Label>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={sobranteData.cantidad}
+                    onChange={(e) =>
+                      setSobranteData({
+                        ...sobranteData,
+                        cantidad: e.target.value,
+                      })
+                    }
+                    className="bg-white text-gray-900 focus-visible:ring-[#C4A77D] border-[#C4A77D] dark:bg-zinc-950/50 dark:border-[#C4A77D] dark:text-white dark:shadow-inner transition-colors duration-300"
+                    placeholder="Ej: 10"
+                  />
+                </div>
 
-            <Button
-              type="button"
-              onClick={() => setScannerActivoTickets(!scannerActivoTickets)}
-              className="bg-[#C4A77D] hover:bg-[#C4A77D]/90 text-white hover:text-black transition-all duration-300 dark:text-black font-bold flex items-center gap-2 bg-gradient-to-br from-[#E2C792] via-[#C4A77D] to-[#8A7350] dark:border dark:border-[#E2C792]/40 shadow-lg"
-            >
-              <Camera className="w-4 h-4" />
-              {scannerActivoTickets ? "Cerrar Escáner" : "Escanear ticket"}
-            </Button>
-          </div>
-
-          {/* VENTANA DEL ESCÁNER DE CÁMARA */}
-          {scannerActivoTickets && (
-            <div className="bg-gray-50 border border-gray-300 dark:bg-zinc-900/80 dark:backdrop-blur-xl dark:border-white/10 p-4 rounded-lg relative transition-colors duration-300">
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-bold text-sm text-[#C4A77D]">
-                  Apunte la cámara al código de barras o QR
-                </span>
                 <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setScannerActivoTickets(false)}
-                  className="text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-zinc-800"
+                  type="button"
+                  onClick={() => setScannerActivoTickets(!scannerActivoTickets)}
+                  className="bg-[#C4A77D] hover:bg-[#C4A77D]/90 text-white hover:text-black transition-all duration-300 dark:text-black font-bold flex items-center gap-2 bg-gradient-to-br from-[#E2C792] via-[#C4A77D] to-[#8A7350] dark:border dark:border-[#E2C792]/40 shadow-lg"
                 >
-                  <X className="w-6 h-6" />
+                  <Camera className="w-4 h-4" />
+                  {scannerActivoTickets ? "Cerrar Escáner" : "Escanear ticket"}
                 </Button>
               </div>
-              <div id="reader" className="w-full max-w-md mx-auto"></div>
-            </div>
-          )}
-        </div>
 
-        <div className="pt-2 flex flex-col sm:flex-row justify-end gap-4">
-          <Button
-            disabled={loadingSobrantes || !sobranteData.tipo_ticket_id}
-            size="lg"
-            onClick={handleDeclararSobrantes}
-            className="bg-[#C4A77D] hover:bg-red-600 hover:text-white text-white hover:text-black transition-all duration-300 dark:hover:text-white dark:text-black dark:hover:bg-red-500 dark:hover:text-white font-bold px-8 py-6 text-lg shadow-lg w-full sm:w-auto transition-all"
-          >
-            {loadingSobrantes ? "Procesando..." : "Marcar como sobrantes"}
-          </Button>
-        </div>
-      </div>
+              {/* VENTANA DEL ESCÁNER DE CÁMARA */}
+              {scannerActivoTickets && (
+                <div className="bg-gray-50 border border-gray-300 dark:bg-zinc-900/80 dark:backdrop-blur-xl dark:border-white/10 p-4 rounded-lg relative transition-colors duration-300">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="font-bold text-sm text-[#C4A77D]">
+                      Apunte la cámara al código de barras o QR
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setScannerActivoTickets(false)}
+                      className="text-gray-500 hover:bg-gray-200 dark:text-gray-400 dark:hover:bg-zinc-800"
+                    >
+                      <X className="w-6 h-6" />
+                    </Button>
+                  </div>
+                  <div id="reader" className="w-full max-w-md mx-auto"></div>
+                </div>
+              )}
+            </div>
+
+            <div className="pt-2 flex flex-col sm:flex-row justify-end gap-4">
+              <Button
+                disabled={loadingSobrantes || !sobranteData.tipo_ticket_id}
+                size="lg"
+                onClick={handleDeclararSobrantes}
+                className="bg-[#C4A77D] hover:bg-red-600 hover:text-white text-white hover:text-black transition-all duration-300 dark:hover:text-white dark:text-black dark:hover:bg-red-500 dark:hover:text-white font-bold px-8 py-6 text-lg shadow-lg w-full sm:w-auto transition-all"
+              >
+                {loadingSobrantes ? "Procesando..." : "Anular"}
+              </Button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

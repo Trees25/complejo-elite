@@ -67,7 +67,8 @@ export default function HeroUI({ rolInicial }: { rolInicial: string }) {
 
         {/* NAVEGACIÓN */}
         <nav className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4">
-          {rolInicial.includes("admin") && (
+          {(rolInicial.includes("admin") ||
+            rolInicial.includes("supervisor")) && (
             <Button
               className={
                 activeTab === "Dashboard"
@@ -80,7 +81,9 @@ export default function HeroUI({ rolInicial }: { rolInicial: string }) {
             </Button>
           )}
 
-          {(rolInicial.includes("admin") || rolInicial.includes("ingreso")) && (
+          {(rolInicial.includes("admin") ||
+            rolInicial.includes("ingreso") ||
+            rolInicial.includes("supervisor")) && (
             <>
               <Button
                 className={
@@ -117,7 +120,8 @@ export default function HeroUI({ rolInicial }: { rolInicial: string }) {
           )}
 
           {/* Bloque Admin Final */}
-          {rolInicial.includes("admin") && (
+          {(rolInicial.includes("admin") ||
+            rolInicial.includes("supervisor")) && (
             <>
               <Button
                 className={
@@ -131,8 +135,7 @@ export default function HeroUI({ rolInicial }: { rolInicial: string }) {
               </Button>
             </>
           )}
-          {(rolInicial.includes("admin") ||
-            rolInicial.includes("supervisor")) && (
+          {rolInicial.includes("admin") && (
             <>
               <Button
                 className={
@@ -142,7 +145,7 @@ export default function HeroUI({ rolInicial }: { rolInicial: string }) {
                 }
                 onClick={() => setActiveTab("supervision")}
               >
-                Supervisión
+                Registros/historial de movimientos
               </Button>
             </>
           )}

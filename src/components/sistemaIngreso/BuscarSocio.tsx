@@ -94,7 +94,9 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
   // Validación de permisos
   if (
     !usuario ||
-    (!usuario.includes("admin") && !usuario.includes("ingreso"))
+    (!usuario.includes("admin") &&
+      !usuario.includes("ingreso") &&
+      !usuario.includes("supervisor"))
   ) {
     return (
       <div className="p-8 bg-red-100 text-red-800 border border-red-300 rounded-lg dark:bg-red-950/50 dark:text-red-400 dark:border-red-900/50">
@@ -845,7 +847,7 @@ export default function FormIngreso({ usuario }: { usuario: String }) {
           <Label className="text-sm text-gray-700 dark:text-zinc-300">
             Elegir Socio
           </Label>
-          {usuario.includes("admin") && (
+          {(usuario.includes("admin") || usuario.includes("supervisor")) && (
             <div className="flex flex-col md:flex-row gap-2 w-full sm:w-auto">
               <Button
                 type="button"

@@ -9,6 +9,11 @@ export default function DashboardSupervisor({ usuario }: { usuario: string }) {
   const [logs, setLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // <-- NUEVO: Estado para el filtro de fecha (por defecto hoy en formato YYYY-MM-DD)
+  const [fechaLogs, setFechaLogs] = useState(
+    new Date().toLocaleDateString("en-CA"),
+  );
+
   if (
     !usuario ||
     (!usuario.includes("admin") && !usuario.includes("supervisor"))
@@ -58,7 +63,11 @@ export default function DashboardSupervisor({ usuario }: { usuario: string }) {
 
               return {
                 ...turno,
-                empleado: turno.perfiles?.[0]?.nombre || "Desconocido",
+                // <-- CORRECCIÓN: Se elimina el [0] porque Supabase devuelve un objeto, no un array
+                empleado:
+                  (turno.perfiles as any)?.nombre ||
+                  (turno.perfiles as any)?.[0]?.nombre ||
+                  "Desconocido",
                 ticketsEmitidos: emitidos || 0,
                 ticketsBaja: bajas || 0,
               };
@@ -67,12 +76,22 @@ export default function DashboardSupervisor({ usuario }: { usuario: string }) {
           setMetricasCajas(turnosConMetricas);
         }
 
-        // 2. CARGAR HISTORIAL DE MOVIMIENTOS (LOGS)
+        // 2. CARGAR HISTORIAL DE MOVIMIENTOS (LOGS) FILTRADO POR FECHA
+        // <-- NUEVO: Calculamos el inicio y fin del día seleccionado
+        const inicioDia = new Date(
+          `${fechaLogs}T00:00:00.000-03:00`,
+        ).toISOString();
+        const finDia = new Date(
+          `${fechaLogs}T23:59:59.999-03:00`,
+        ).toISOString();
+
         const { data: logsData, error: logsError } = await supabase
           .from("logs_auditoria")
           .select("id, accion, descripcion, created_at, perfiles(nombre)")
+          .gte("created_at", inicioDia) // Mayor o igual al inicio del día
+          .lte("created_at", finDia) // Menor o igual al final del día
           .order("created_at", { ascending: false })
-          .limit(30); // Trae los últimos 30 movimientos
+          .limit(100); // <-- Aumentado a 100 para ver un día completo de operaciones
 
         if (logsError) throw logsError;
         if (logsData) setLogs(logsData);
@@ -84,7 +103,7 @@ export default function DashboardSupervisor({ usuario }: { usuario: string }) {
     }
 
     cargarAuditoria();
-  }, [supabase]);
+  }, [supabase, fechaLogs]); // <-- NUEVO: React vuelve a ejecutar si cambia la fecha seleccionada
 
   return (
     <div className="space-y-8 p-4 sm:p-8 bg-gray-50 dark:bg-zinc-950 min-h-screen">
@@ -144,10 +163,23 @@ export default function DashboardSupervisor({ usuario }: { usuario: string }) {
 
       {/* SECCIÓN 2: HISTORIAL DE MOVIMIENTOS (LOGS) */}
       <div className="p-6 bg-white dark:bg-zinc-900 rounded-xl shadow border border-gray-200 dark:border-white/10">
-        <div className="border-b-2 border-[#C4A77D] pb-4 mb-4">
+        <div className="border-b-2 border-[#C4A77D] pb-4 mb-4 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white uppercase">
-            Registro de Actividades (En Vivo)
+            Registro de Actividades
           </h2>
+
+          {/* <-- NUEVO: Selector de Fecha --> */}
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-semibold text-gray-700 dark:text-zinc-300">
+              Día:
+            </label>
+            <input
+              type="date"
+              value={fechaLogs}
+              onChange={(e) => setFechaLogs(e.target.value)}
+              className="bg-white border border-gray-300 text-gray-900 text-sm rounded-md focus:ring-[#C4A77D] focus:border-[#C4A77D] block px-3 py-1.5 dark:bg-zinc-950/50 dark:border-white/10 dark:text-white shadow-sm"
+            />
+          </div>
         </div>
         {loading ? (
           <p className="text-center text-gray-500 py-4">
@@ -176,7 +208,9 @@ export default function DashboardSupervisor({ usuario }: { usuario: string }) {
                   <div>
                     <p className="text-sm text-gray-900 dark:text-white">
                       <span className="font-bold text-[#C4A77D]">
-                        {log.perfiles?.nombre || "Usuario Desconocido"}
+                        {(log.perfiles as any)?.nombre ||
+                          (log.perfiles as any)?.[0]?.nombre ||
+                          "Usuario Desconocido"}
                       </span>{" "}
                       {log.descripcion}
                     </p>
@@ -188,8 +222,8 @@ export default function DashboardSupervisor({ usuario }: { usuario: string }) {
               );
             })}
             {logs.length === 0 && (
-              <p className="text-sm text-gray-500">
-                No hay actividades recientes registradas.
+              <p className="text-sm text-gray-500 text-center py-4">
+                No hay actividades registradas en la fecha seleccionada.
               </p>
             )}
           </div>

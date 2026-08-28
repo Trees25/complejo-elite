@@ -58,7 +58,9 @@ export default function Dashboard({ usuario }: { usuario: String }) {
 
   if (
     !usuario ||
-    (!usuario.includes("admin") && !usuario.includes("ingreso"))
+    (!usuario.includes("admin") &&
+      !usuario.includes("ingreso") &&
+      !usuario.includes("supervisor"))
   ) {
     return (
       <div className="p-8 bg-red-100 text-red-800 border border-red-300 rounded-lg dark:bg-red-950/50 dark:text-red-400 dark:border-red-900/50">
@@ -123,7 +125,6 @@ export default function Dashboard({ usuario }: { usuario: String }) {
         .eq("estado", "SOBRANTE");
 
       if (error) throw error;
-      console.log(sobrantes);
       if (sobrantes) {
         setSobrantes(Number(sobrantes || 0));
       }
@@ -418,7 +419,7 @@ export default function Dashboard({ usuario }: { usuario: String }) {
               </div>
             ))}
             <div className="bg-white p-4 rounded-md border border-gray-200 shadow-sm space-y-2 text-gray-900 dark:bg-zinc-950/60 dark:border-white/10 dark:text-white dark:shadow-lg">
-              <h4 className="font-bold text-base">Sobrantes</h4>
+              <h4 className="font-bold text-base">Anulados</h4>
               <div className="flex justify-between text-sm text-gray-600 dark:text-zinc-400">
                 <span>Cantidad:</span>
                 <span className="font-semibold text-[#C4A77D]">

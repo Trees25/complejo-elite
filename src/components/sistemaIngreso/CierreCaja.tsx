@@ -41,7 +41,9 @@ export default function CierreCaja({ usuario }: { usuario: string }) {
   // Validación de permisos
   if (
     !usuario ||
-    (!usuario.includes("admin") && !usuario.includes("ingreso"))
+    (!usuario.includes("admin") &&
+      !usuario.includes("ingreso") &&
+      !usuario.includes("supervisor"))
   ) {
     return (
       <div className="p-8 bg-red-100 text-red-800 border border-red-300 rounded-lg dark:bg-red-950/50 dark:text-red-400 dark:border-red-900/50">
